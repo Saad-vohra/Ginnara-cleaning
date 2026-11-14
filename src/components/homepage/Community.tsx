@@ -8,7 +8,7 @@ import { Modal } from "@/components/common/Modal";
 import { Photo, Reveal, Stars } from "@/components/common/ui";
 import { IMG, AVATARS } from "@/data/images";
 import { useStore } from "@/hooks/useStore";
-import { ReviewCard } from "@/components/services/Cards";
+import { ReviewCarousel } from "@/components/common/ReviewCarousel";
 import { useToast } from "@/components/common/Toast";
 import { Input } from "@/components/common/Field";
 import { phoneField } from "@/lib/validation";
@@ -40,16 +40,10 @@ export function Testimonials() {
             </p>
           </div>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {reviews.slice(0, count).map((r, i) => (
-            <Reveal key={r.id} delay={(i % 3) * 0.06}>
-              <ReviewCard review={r} />
-            </Reveal>
-          ))}
-        </div>
+        <ReviewCarousel reviews={reviews.slice(0, count)} />
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           {count < reviews.length && (
-            <Button variant="outline" onClick={() => setCount((c) => c + 3)}>
+            <Button variant="outline" className="hidden md:inline-flex" onClick={() => setCount((c) => c + 3)}>
               Show more reviews
             </Button>
           )}

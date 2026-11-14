@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Mail, Globe, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, Mail, Globe, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Logo } from "./Logo";
@@ -153,8 +153,11 @@ export function Footer() {
 
         <div className="mt-8 flex flex-col gap-3 text-[13px] text-white/50 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Ginnara Cleaning Service, London. Frontend demo — no real bookings or payments are processed.</p>
-          <p className="flex items-center gap-1.5">
-            <ShieldCheck className="size-4" /> Every booking insured up to £5m (demo)
+          <p>
+            Powered by{" "}
+            <a href="https://www.noortechnolab.online/" target="_blank" rel="noopener noreferrer" className="font-semibold text-white/80 underline-offset-4 hover:text-white hover:underline">
+              Noor Technolab
+            </a>
           </p>
         </div>
       </div>

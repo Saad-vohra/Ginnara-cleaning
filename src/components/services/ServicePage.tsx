@@ -8,7 +8,7 @@ import type { Service } from "@/types";
 import { LinkButton } from "@/components/common/Button";
 import { Badge, EmptyState, Photo, Reveal, SectionHeading } from "@/components/common/ui";
 import { PostcodeSearch } from "./PostcodeSearch";
-import { ReviewCard } from "./Cards";
+import { ReviewCarousel } from "@/components/common/ReviewCarousel";
 import { CtaBand, FaqSection, HowItWorks, RelatedServices } from "@/components/sections/InfoSections";
 import { useStore } from "@/hooks/useStore";
 import { extraById } from "@/lib/extras";
@@ -277,11 +277,7 @@ export function ServiceBody({ service }: { service: Service }) {
         <div className="container-site">
           <SectionHeading eyebrow="Customer reviews" title={`What customers say about our ${service.kind === "ironing" ? "ironing" : "cleaners"}`} action={<LinkButton href="/reviews" variant="outline">All reviews</LinkButton>} />
           {shown.length ? (
-            <div className="grid gap-5 md:grid-cols-3">
-              {shown.map((r) => (
-                <ReviewCard key={r.id} review={r} />
-              ))}
-            </div>
+            <ReviewCarousel reviews={shown} gridClassName="md:grid-cols-3" />
           ) : (
             <EmptyState title="No reviews yet" description="Be the first to review this service." />
           )}

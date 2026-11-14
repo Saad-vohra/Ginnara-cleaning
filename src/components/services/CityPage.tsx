@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { City } from "@/types";
 import { LinkButton } from "@/components/common/Button";
-import { Accordion, Photo, Reveal, SectionHeading, Stars } from "@/components/common/ui";
+import { Accordion, Photo, SectionHeading, Stars } from "@/components/common/ui";
 import { PostcodeSearch } from "./PostcodeSearch";
-import { ReviewCard } from "./Cards";
+import { ReviewCarousel } from "@/components/common/ReviewCarousel";
 import { Breadcrumbs } from "./ServicePage";
 import { CtaBand, HowItWorks } from "@/components/sections/InfoSections";
 import { useActiveServices, useStore } from "@/hooks/useStore";
@@ -128,13 +128,7 @@ export function CityPage({ city }: { city: City }) {
       <section className="py-16 lg:py-20">
         <div className="container-site">
           <SectionHeading title={`Reviews from ${city.name} homes`} />
-          <div className="grid gap-5 md:grid-cols-3">
-            {shown.map((r) => (
-              <Reveal key={r.id}>
-                <ReviewCard review={r} />
-              </Reveal>
-            ))}
-          </div>
+          <ReviewCarousel reviews={shown} gridClassName="md:grid-cols-3" />
         </div>
       </section>
 
