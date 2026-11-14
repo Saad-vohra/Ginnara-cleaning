@@ -84,7 +84,7 @@ function GoogleIcon() {
   );
 }
 
-function GoogleButton({ label }: { label: string }) {
+export function GoogleButton({ label }: { label: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>

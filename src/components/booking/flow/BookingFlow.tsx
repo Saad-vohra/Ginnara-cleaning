@@ -11,6 +11,7 @@ import { Modal } from "@/components/common/Modal";
 import { useToast } from "@/components/common/Toast";
 import { Photo } from "@/components/common/ui";
 import { LogoMark } from "@/components/layout/Logo";
+import { GoogleButton } from "@/components/forms/CustomerAuth";
 import { BasketRows } from "./Basket";
 import { BookingCalendar, BottomBar, InfoBox, InfoTip, OptionTile, PopularTag, Sheet, StepTitle, TimeGrid } from "./ui";
 import { useActiveServices, useCurrentCustomer, useStore } from "@/hooks/useStore";
@@ -22,7 +23,7 @@ import { IMG } from "@/data/images";
 import { emailField, nameField, phoneField } from "@/lib/validation";
 import { addDays, cn, fromISODate, gbp, gbp2, sleep, toISODate } from "@/lib/utils";
 
-type Step = "address" | "session" | "frequency" | "duration" | "needs" | "pets" | "date" | "time" | "who" | "review";
+type Step = "address" | "session" | "frequency" | "duration" | "needs" | "pets" | "date" | "time" | "account" | "who" | "review";
 
 const TILE_BG = ["bg-[#cfcdf7]", "bg-[#fbd3e3]", "bg-[#fde7a6]", "bg-[#cde9dc]", "bg-[#cfe5f2]", "bg-[#fbd8c8]"];
 
@@ -72,7 +73,9 @@ export function BookingFlow() {
     return { draft: d, step: "address" as Step };
   });
   const [draft, setDraft] = useState<BookingDraft>(init.draft);
-  const [step, setStep] = useState<Step>(init.step);
+  const [savedStep, setStep] = useState<Step>(init.step);
+  // Back from sign-in / registration: the account step is skipped automatically
+  const step: Step = savedStep === "account" && customer ? "who" : savedStep;
   const [dir, setDir] = useState(1);
   const [basketOpen, setBasketOpen] = useState(false);
   const [askMore, setAskMore] = useState(false);
@@ -86,7 +89,7 @@ export function BookingFlow() {
   const update = (patch: Partial<BookingDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const setOptions = (patch: Partial<NonNullable<BookingDraft["options"]>>) => setDraft((d) => (d.options ? { ...d, options: { ...d.options, ...patch } } : d));
 
-  const steps = useMemo<Step[]>(() => ["address", "session", ...(service?.allowsFrequency ? (["frequency"] as Step[]) : []), "duration", "needs", "pets", "date", "time", "who", "review"], [service?.allowsFrequency]);
+  const steps = useMemo<Step[]>(() => ["address", "session", ...(service?.allowsFrequency ? (["frequency"] as Step[]) : []), "duration", "needs", "pets", "date", "time", ...(customer ? [] : (["account"] as Step[])), "who", "review"], [service?.allowsFrequency, customer]);
   const index = Math.max(0, steps.indexOf(step));
 
   useEffect(() => {
@@ -415,6 +418,27 @@ export function BookingFlow() {
               </>
             )}
 
+            {/* ---------------- ACCOUNT (signed-out customers only) ---------------- */}
+            {step === "account" && (
+              <>
+                <StepTitle>New to Ginnara? Register to continue</StepTitle>
+                <Link href="/register?next=/booking" className="flex h-14 w-full items-center justify-center rounded-full bg-ink text-[18px] font-bold text-white transition hover:bg-black">
+                  Sign up with an email
+                </Link>
+                <div className="my-6 flex items-center gap-4 text-[15px] text-ink-soft">
+                  <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+                </div>
+                <GoogleButton label="Sign up with Google" />
+                <p className="mt-5 text-center text-[17px]">
+                  Already registered?{" "}
+                  <Link href="/login?next=/booking" className="font-semibold underline underline-offset-4 hover:text-brand">
+                    Log in
+                  </Link>
+                </p>
+                <p className="mt-8 text-center text-sm text-muted">Your booking so far is saved — you&apos;ll come straight back here.</p>
+              </>
+            )}
+
             {/* ---------------- WHO ---------------- */}
             {step === "who" && (
               <>
@@ -547,7 +571,7 @@ export function BookingFlow() {
         )}
       </main>
 
-      {step !== "address" && step !== "review" && <BottomBar priceLabel={priceLabel} onNext={next} onBasket={() => setBasketOpen((o) => !o)} basketOpen={basketOpen} />}
+      {step !== "address" && step !== "review" && step !== "account" && <BottomBar priceLabel={priceLabel} onNext={next} onBasket={() => setBasketOpen((o) => !o)} basketOpen={basketOpen} />}
 
       {/* Basket sheet */}
       <Sheet open={basketOpen} onClose={() => setBasketOpen(false)} closeButton={false} className="pb-32">
