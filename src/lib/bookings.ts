@@ -41,7 +41,7 @@ export const emptyDraft = (): BookingDraft => ({
 });
 
 /* ---------- In-progress draft (sessionStorage, survives a sign-in round trip) ---------- */
-const DRAFT_KEY = "ginnara:v3:booking-draft";
+const DRAFT_KEY = "ginnara:v4:booking-draft";
 
 export function saveDraft(draft: BookingDraft, step: string) {
   try {
@@ -126,5 +126,68 @@ export function hoursUntil(b: Booking) {
 }
 
 export const isUpcoming = (b: Booking) => (b.status === "pending" || b.status === "confirmed") && hoursUntil(b) > 0;
+
+/* ---------- Cancellation & reschedule policy ---------- */
+
+export const POLICY = {
+  /** Cancel at least this many hours before the start: full refund */
+  fullRefundHours: 24,
+  /** Cancel between this and fullRefundHours: 50% refund; later than this: no refund */
+  noRefundHours: 4,
+  partialRefundPct: 50,
+  /** Reschedule only allowed at least this many hours before the start */
+  rescheduleHours: 24,
+};
+
+export const POLICY_LINES = [
+  `More than ${POLICY.fullRefundHours} hours before: free cancellation, full refund.`,
+  `Between ${POLICY.fullRefundHours} and ${POLICY.noRefundHours} hours before: ${POLICY.partialRefundPct}% refund.`,
+  `Less than ${POLICY.noRefundHours} hours before: no refund.`,
+  `Rescheduling is free up to ${POLICY.rescheduleHours} hours before the start time.`,
+];
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** What the customer gets back if they cancel right now */
+export function cancellationTerms(b: Booking) {
+  const hours = hoursUntil(b);
+  const pct = hours >= POLICY.fullRefundHours ? 100 : hours >= POLICY.noRefundHours ? POLICY.partialRefundPct : 0;
+  const refund = round2((b.pricing.total * pct) / 100);
+  return { hours, pct, refund, fee: round2(b.pricing.total - refund) };
+}
+
+export const canReschedule = (b: Booking) => isUpcoming(b) && hoursUntil(b) >= POLICY.rescheduleHours;
+
+/** Customer cancellation: applies the refund policy and records it on the booking */
+export function cancelBooking(ref: string) {
+  const b = read("bookings").find((x) => x.ref === ref);
+  if (!b || !isUpcoming(b)) return null;
+  const t = cancellationTerms(b);
+  const now = new Date().toISOString();
+  patch("bookings", (x) => x.ref === ref, {
+    status: "cancelled",
+    cancelledAt: now,
+    refundPct: t.pct,
+    refundAmount: t.refund,
+    cancellationFee: t.fee,
+    paymentStatus: t.pct === 100 ? "refunded" : t.pct > 0 ? "partially_refunded" : "paid",
+    refundedAt: t.pct > 0 ? now : undefined,
+  });
+  const outcome = t.pct === 100 ? "full refund" : t.pct > 0 ? `${t.pct}% refund (£${t.refund.toFixed(2)}), fee £${t.fee.toFixed(2)}` : `no refund, £${t.fee.toFixed(2)} charged`;
+  notify({ type: "booking", title: "Booking cancelled by customer", body: `${b.customer.name} cancelled ${ref} (${Math.max(0, Math.floor(t.hours))}h before start): ${outcome}.`, section: "bookings" });
+  return t;
+}
+
+/** Customer reschedule: only allowed up to POLICY.rescheduleHours before the current start */
+export function rescheduleBooking(ref: string, date: string, time: string) {
+  const b = read("bookings").find((x) => x.ref === ref);
+  if (!b) return { ok: false as const, error: "Booking not found." };
+  if (!canReschedule(b)) return { ok: false as const, error: `Bookings can only be rescheduled more than ${POLICY.rescheduleHours} hours before the start time.` };
+  if (hoursUntil({ ...b, date, time }) <= 0) return { ok: false as const, error: "Choose a time in the future." };
+  if (date === b.date && time === b.time) return { ok: false as const, error: "Choose a different date or time." };
+  patch("bookings", (x) => x.ref === ref, { date, time, altTimes: [], rescheduledAt: new Date().toISOString(), rescheduledFrom: { date: b.date, time: b.time } });
+  notify({ type: "booking", title: "Booking rescheduled", body: `${b.customer.name} moved ${ref} from ${b.date} ${b.time} to ${date} ${time}.`, section: "bookings" });
+  return { ok: true as const };
+}
 
 export const formatHours = (h: number) => `${Math.floor(h)}h${h % 1 ? "30" : ""}`;

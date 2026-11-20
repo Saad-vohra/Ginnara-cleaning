@@ -43,15 +43,18 @@ export function calculatePrice(
   settings: SiteSettings = DEFAULT_SETTINGS,
   coupon?: { code: string; coupons: Coupon[] },
 ): PriceBreakdown {
-  const rate = service.hourlyRate;
-  const base = round2(options.hours * rate);
+  const pkg = service.packages?.find((p) => p.id === options.packageId) ?? service.packages?.[0];
+  const rate = rateFor(service, options.frequency);
+  // Fixed-price packages (e.g. Airbnb) charge the package price instead of hours × rate
+  const base = pkg ? pkg.price : round2(options.hours * rate);
   const extrasLines = options.extras
     .map((id) => extraById(id))
     .filter((e): e is NonNullable<typeof e> => Boolean(e))
     .map((e) => ({ label: e.label, price: e.price }));
   const extrasTotal = extrasLines.reduce((s, e) => s + e.price, 0);
   const suppliesFee = options.supplies ? round2((settings.suppliesPerHour ?? DEFAULT_SETTINGS.suppliesPerHour) * options.hours) : 0;
-  const pct = service.allowsFrequency ? frequencyDiscountPct(options.frequency, settings) : 0;
+  // Services with a separate one-off rate already price regular visits lower, so no extra frequency discount
+  const pct = service.allowsFrequency && !service.oneOffRate && !pkg ? frequencyDiscountPct(options.frequency, settings) : 0;
   const frequencyDiscount = round2((base * pct) / 100);
   const serviceFee = settings.serviceFee;
   const subtotal = round2(base + extrasTotal + suppliesFee - frequencyDiscount + serviceFee);
@@ -78,14 +81,21 @@ export function calculatePrice(
     couponCode,
     couponDiscount,
     total: round2(Math.max(0, subtotal - couponDiscount)),
+    packageLabel: pkg?.label,
   };
+}
+
+/** Hourly rate for a visit: one-off visits use oneOffRate when the service has one */
+export function rateFor(service: Service, frequency: BookingOptions["frequency"] = "weekly") {
+  return frequency === "once" && service.oneOffRate ? service.oneOffRate : service.hourlyRate;
 }
 
 export const defaultOptions = (service: Service): BookingOptions => ({
   bedrooms: 2,
   bathrooms: 1,
   propertyType: "flat",
-  hours: recommendedHours(service, 2, 1),
+  hours: service.packages?.[0]?.hours ?? recommendedHours(service, 2, 1),
+  packageId: service.packages?.[0]?.id,
   extras: [],
   frequency: service.allowsFrequency && service.slug === "residential-cleaning" ? "weekly" : "once",
   supplies: false,

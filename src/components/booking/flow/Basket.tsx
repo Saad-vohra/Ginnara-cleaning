@@ -119,7 +119,7 @@ export function BasketRows({ draft, service, price, mode, onChange, onEdit }: Pr
           price && service && draft.options ? (
             <div>
               <p className="mb-3 text-sm text-ink-soft">
-                {service.name} · {formatHours(draft.options.hours)}
+                {service.name} · {price.packageLabel ?? formatHours(draft.options.hours)}
                 {draft.options.extras.length ? ` · ${draft.options.extras.length} extra${draft.options.extras.length > 1 ? "s" : ""}` : ""}
                 {draft.options.supplies ? " · cleaning products" : ""}
                 {draft.options.pets ? " · pets at home" : ""}

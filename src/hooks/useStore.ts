@@ -41,3 +41,8 @@ export function useCurrentPro() {
 export function useActiveServices() {
   return useStore("services").filter((s) => s.active);
 }
+
+/** Active services that can be booked online (excludes WhatsApp-quote services) */
+export function useBookableServices() {
+  return useStore("services").filter((s) => s.active && s.bookingMode !== "quote");
+}

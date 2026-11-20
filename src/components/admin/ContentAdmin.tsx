@@ -168,6 +168,7 @@ function FaqModal({ initial, categories, onClose }: { initial?: Faq; categories:
 const contactSchema = z.object({
   businessName: z.string().trim().min(2, "Required"),
   supportPhone: z.string().trim().min(6, "Enter a phone number"),
+  whatsappNumber: z.string().trim().min(6, "Enter a WhatsApp number"),
   supportEmail: z.string().email("Enter a valid email"),
   website: z.string().trim().min(4, "Required"),
   address: z.string().trim().min(2, "Required"),
@@ -179,7 +180,7 @@ function ContactDetails() {
   const { success } = useToast();
   const { register, handleSubmit, formState, reset } = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { businessName: settings.businessName ?? "", supportPhone: settings.supportPhone, supportEmail: settings.supportEmail, website: settings.website ?? "", address: settings.address ?? "", openingHours: settings.openingHours ?? "" },
+    defaultValues: { businessName: settings.businessName ?? "", supportPhone: settings.supportPhone, whatsappNumber: settings.whatsappNumber ?? settings.supportPhone, supportEmail: settings.supportEmail, website: settings.website ?? "", address: settings.address ?? "", openingHours: settings.openingHours ?? "" },
   });
   return (
     <Panel title="Contact details shown on the website">
@@ -196,6 +197,7 @@ function ContactDetails() {
         <Input label="Business name" error={formState.errors.businessName?.message} {...register("businessName")} />
         <Input label="Website" error={formState.errors.website?.message} {...register("website")} />
         <Input label="Phone" error={formState.errors.supportPhone?.message} {...register("supportPhone")} />
+        <Input label="WhatsApp number (quotes)" hint="Used by every “WhatsApp us” button" error={formState.errors.whatsappNumber?.message} {...register("whatsappNumber")} />
         <Input label="Email" type="email" error={formState.errors.supportEmail?.message} {...register("supportEmail")} />
         <Input label="Address / area" error={formState.errors.address?.message} {...register("address")} />
         <Input label="Opening hours" error={formState.errors.openingHours?.message} {...register("openingHours")} />

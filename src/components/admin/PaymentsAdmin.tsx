@@ -15,7 +15,7 @@ import { PRO_SHARE } from "@/lib/pros";
 import { patch } from "@/lib/storage";
 import { formatDate, formatDateTime, gbp2, toISODate } from "@/lib/utils";
 
-const TONE: Record<PaymentStatus, "success" | "warning" | "danger" | "neutral"> = { paid: "success", authorised: "warning", refunded: "danger", voided: "neutral" };
+const TONE: Record<PaymentStatus, "success" | "warning" | "danger" | "neutral"> = { paid: "success", authorised: "warning", partially_refunded: "danger", refunded: "danger", voided: "neutral" };
 
 export function PaymentsAdmin() {
   const [tab, setTab] = useState<"transactions" | "payouts">("transactions");
@@ -35,7 +35,12 @@ function Transactions() {
   const [method, setMethod] = useState<"all" | "card" | "paypal">("all");
   const [confirm, setConfirm] = useState<{ b: Booking; action: "capture" | "refund" } | null>(null);
 
-  const sum = (s: PaymentStatus) => bookings.filter((b) => paymentStatusOf(b) === s).reduce((t, b) => t + b.pricing.total, 0);
+  // Amount kept / returned per booking: part refunds and late cancellations split the price
+  const kept = (b: Booking) => (b.refundAmount !== undefined ? b.pricing.total - b.refundAmount : b.pricing.total);
+  const returned = (b: Booking) => b.refundAmount ?? b.pricing.total;
+  const sum = (s: PaymentStatus) => bookings.filter((b) => paymentStatusOf(b) === s).reduce((t, b) => t + (s === "refunded" ? returned(b) : kept(b)), 0);
+  const refundedTotal = bookings.filter((b) => paymentStatusOf(b) === "refunded" || paymentStatusOf(b) === "partially_refunded").reduce((t, b) => t + returned(b), 0);
+  const collected = sum("paid") + sum("partially_refunded");
   const rows = bookings
     .filter((b) => (filter === "all" || paymentStatusOf(b) === filter) && (method === "all" || paymentMethodOf(b) === method))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -43,17 +48,17 @@ function Transactions() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Collected" value={gbp2(sum("paid"))} icon={Banknote} tone="mint" hint={`${bookings.filter((b) => paymentStatusOf(b) === "paid").length} paid bookings`} />
+        <StatCard label="Collected" value={gbp2(collected)} icon={Banknote} tone="mint" hint={`${bookings.filter((b) => paymentStatusOf(b) === "paid").length} paid bookings`} />
         <StatCard label="Authorised (to capture)" value={gbp2(sum("authorised"))} icon={Hourglass} tone="sun" hint="Charged after the clean" />
-        <StatCard label="Refunded" value={gbp2(sum("refunded"))} icon={RotateCcw} tone="blush" />
-        <StatCard label="Net revenue" value={gbp2(sum("paid"))} icon={Wallet} tone="sky" hint={`Platform share ≈ ${gbp2(sum("paid") * (1 - PRO_SHARE))}`} />
+        <StatCard label="Refunded" value={gbp2(refundedTotal)} icon={RotateCcw} tone="blush" hint="Includes 50% late-cancellation refunds" />
+        <StatCard label="Net revenue" value={gbp2(collected)} icon={Wallet} tone="sky" hint={`Platform share ≈ ${gbp2(collected * (1 - PRO_SHARE))}`} />
       </div>
       <Panel>
         <PillTabs
           className="mb-5"
           value={filter}
           onChange={setFilter}
-          tabs={(["all", "authorised", "paid", "refunded", "voided"] as const).map((s) => ({ value: s, label: s === "all" ? "All" : PAYMENT_LABEL[s], count: s === "all" ? bookings.length : bookings.filter((b) => paymentStatusOf(b) === s).length }))}
+          tabs={(["all", "authorised", "paid", "partially_refunded", "refunded", "voided"] as const).map((s) => ({ value: s, label: s === "all" ? "All" : PAYMENT_LABEL[s], count: s === "all" ? bookings.length : bookings.filter((b) => paymentStatusOf(b) === s).length }))}
         />
         <DataTable
           rows={rows}

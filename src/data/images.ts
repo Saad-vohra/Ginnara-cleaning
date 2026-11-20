@@ -55,6 +55,8 @@ export const IMG = {
   office: unsplash("1497366811353-6870744d04b2"),
   officeLounge: unsplash("1524758631624-e2822e304c36"),
   eventTable: unsplash("1511795409834-ef04bbd61622"),
+  plumbing: unsplash("1585704032915-c3400ca199e7"),
+  moving: unsplash("1600518464441-9154a4dea21b"),
   familyHome: unsplash("1581952976147-5a2d15560349", 2000),
 } as const;
 

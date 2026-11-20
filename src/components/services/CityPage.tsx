@@ -13,12 +13,14 @@ import { CtaBand, HowItWorks } from "@/components/sections/InfoSections";
 import { useActiveServices, useStore } from "@/hooks/useStore";
 import { CITIES } from "@/data/mock-cities";
 import { bookingHref, serviceHref } from "@/lib/routes";
+import { isQuoteOnly, priceLabel, quoteMessage, whatsappHref } from "@/lib/services";
 import { cn } from "@/lib/utils";
 
 export function CityPage({ city }: { city: City }) {
   const params = useSearchParams();
   const highlight = params.get("service") ?? "";
-  const services = useActiveServices();
+  const services = useActiveServices().filter((s) => s.kind !== "trade");
+  const settings = useStore("settings");
   const reviews = useStore("reviews").filter((r) => r.published);
   const pros = useStore("pros").filter((p) => p.status === "approved").slice(0, 4);
   const local = reviews.filter((r) => r.city === city.name);
@@ -26,7 +28,7 @@ export function CityPage({ city }: { city: City }) {
   const highlighted = services.find((s) => s.slug === highlight);
 
   const faqs = [
-    { q: `How much does a cleaner cost in ${city.name}?`, a: `Cleaning in ${city.name} starts from £${city.hourlyFrom.toFixed(2)} per hour for residential and office cleaning. Deep and move-in/move-out cleans are £18 per hour. You'll see your exact price before booking.` },
+    { q: `How much does a cleaner cost in ${city.name}?`, a: `Cleaning in ${city.name} costs £17 per hour for regular cleaning and £20 per hour for a one-off clean. Deep cleaning is £22 per hour, Airbnb cleaning starts at £39 fixed, and move-in/move-out cleaning is quoted on WhatsApp by property size. You'll see your exact price before booking.` },
     { q: `Which areas of ${city.name} do you cover?`, a: `Our pros cover ${city.areas.join(", ")} and surrounding areas (postcodes ${city.postcodes.slice(0, 6).join(", ")}${city.postcodes.length > 6 ? "…" : ""}). Coverage shown here is demo data.` },
     { q: `How quickly can I get a cleaner in ${city.name}?`, a: `Most ${city.name} customers find a pro available from tomorrow. Same-day cleaning is often available if you book before 2pm.` },
     { q: "Are your cleaners vetted and insured?", a: "Yes. Every pro passes ID, right-to-work, DBS and reference checks, and every booking is insured up to £5 million." },
@@ -67,7 +69,6 @@ export function CityPage({ city }: { city: City }) {
           <SectionHeading title={`Cleaning services in ${city.name}`} intro="Prices shown are the local starting hourly rate." />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => {
-              const rate = Math.max(city.hourlyFrom, s.hourlyRate - (18.9 - city.hourlyFrom));
               return (
                 <div key={s.id} className={cn("flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft ring-1 ring-line/60 transition", s.slug === highlight && "ring-2 ring-brand")}>
                   <span className="relative size-20 shrink-0 overflow-hidden rounded-2xl">
@@ -77,10 +78,16 @@ export function CityPage({ city }: { city: City }) {
                     <Link href={serviceHref(s.slug)} className="font-extrabold hover:text-brand">
                       {s.name}
                     </Link>
-                    <p className="text-sm text-muted">from £{rate.toFixed(2)}/hr</p>
-                    <Link href={bookingHref({ service: s.slug })} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:gap-2">
-                      Book in {city.name} <ArrowRight className="size-3.5" />
-                    </Link>
+                    <p className="text-sm text-muted">{priceLabel(s, { from: true })}</p>
+                    {isQuoteOnly(s) ? (
+                      <a href={whatsappHref(settings.whatsappNumber || settings.supportPhone, quoteMessage(s))} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-[#128c4a] hover:gap-2">
+                        Quote on WhatsApp <ArrowRight className="size-3.5" />
+                      </a>
+                    ) : (
+                      <Link href={bookingHref({ service: s.slug })} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:gap-2">
+                        Book in {city.name} <ArrowRight className="size-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

@@ -1,7 +1,10 @@
 /** Canonical URLs for services */
 export function serviceHref(slug: string) {
-  return `/cleaning/${slug}`;
+  return OTHER_SERVICE_SLUGS.includes(slug) ? `/services/${slug}` : `/cleaning/${slug}`;
 }
+
+/** Non-cleaning services live under /services */
+export const OTHER_SERVICE_SLUGS = ["plumbing", "house-moving"];
 
 export function bookingHref(params: { service?: string; postcode?: string } = {}) {
   const q = new URLSearchParams();

@@ -1,6 +1,7 @@
 import type { SiteSettings } from "@/types";
 
 export const DEFAULT_SETTINGS: SiteSettings = {
+  whatsappNumber: "+44 7346 739006",
   serviceFee: 2.5,
   weeklyDiscount: 10,
   fortnightlyDiscount: 5,

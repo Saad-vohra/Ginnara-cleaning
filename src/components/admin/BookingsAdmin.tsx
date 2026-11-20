@@ -284,7 +284,7 @@ export function BookingsAdmin() {
             <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-cream-2 p-4 text-sm">
               <span className="font-semibold">Status</span> <StatusSelect b={viewing} />
               <span className="ml-2 font-semibold">Cleaner</span> <ProSelect b={viewing} />
-              <Badge tone={paymentStatusOf(viewing) === "refunded" ? "danger" : paymentStatusOf(viewing) === "paid" ? "success" : "neutral"}>Payment: {PAYMENT_LABEL[paymentStatusOf(viewing)]}</Badge>
+              <Badge tone={paymentStatusOf(viewing) === "refunded" || paymentStatusOf(viewing) === "partially_refunded" ? "danger" : paymentStatusOf(viewing) === "paid" ? "success" : "neutral"}>Payment: {PAYMENT_LABEL[paymentStatusOf(viewing)]}</Badge>
             </div>
             <BookingDetails booking={viewing} />
           </div>

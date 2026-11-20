@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Review, Service } from "@/types";
 import { Photo, Stars } from "@/components/common/ui";
 import { serviceHref } from "@/lib/routes";
+import { priceLabel } from "@/lib/services";
 import { cn, formatDate } from "@/lib/utils";
 
 export function ServiceCard({ service, className, priority }: { service: Service; className?: string; priority?: boolean }) {
@@ -18,11 +19,7 @@ export function ServiceCard({ service, className, priority }: { service: Service
         <div>
           <h3 className="text-lg font-extrabold">{service.name}</h3>
           <p className="mt-1 text-sm text-ink-soft">{service.short}</p>
-          <p className="mt-3 text-sm">
-            <span className="text-muted">from </span>
-            <span className="font-bold text-ink">£{service.hourlyRate.toFixed(2)}</span>
-            <span className="text-muted">/hr</span>
-          </p>
+          <p className="mt-3 text-sm font-bold text-ink">{priceLabel(service, { from: true })}</p>
         </div>
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-cream text-ink transition group-hover:bg-brand group-hover:text-white">
           <ArrowUpRight className="size-5" />

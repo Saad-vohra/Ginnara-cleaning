@@ -8,6 +8,7 @@ import { ServiceCard } from "./Cards";
 import { Breadcrumbs } from "./ServicePage";
 import { CtaBand, FaqSection, HowItWorks, LocationsSection, WhyUs } from "@/components/sections/InfoSections";
 import { useActiveServices } from "@/hooks/useStore";
+import { startingPrice } from "@/lib/services";
 import { IMG } from "@/data/images";
 import { Button } from "@/components/common/Button";
 
@@ -16,14 +17,14 @@ type Sort = "popular" | "price-asc" | "price-desc" | "name";
 
 const FILTERS: { value: Filter; label: string; match: (slug: string) => boolean }[] = [
   { value: "all", label: "All services", match: () => true },
-  { value: "regular", label: "Homes", match: (s) => ["residential-cleaning", "deep-cleaning", "move-in-move-out-cleaning"].includes(s) },
+  { value: "regular", label: "Homes", match: (s) => ["residential-cleaning", "deep-cleaning", "move-in-move-out-cleaning", "airbnb-cleaning"].includes(s) },
   { value: "intensive", label: "Deep & move-out", match: (s) => ["deep-cleaning", "move-in-move-out-cleaning"].includes(s) },
   { value: "flexible", label: "Recurring", match: (s) => ["residential-cleaning", "office-cleaning"].includes(s) },
   { value: "laundry", label: "Business & events", match: (s) => ["office-cleaning", "special-event-cleaning"].includes(s) },
 ];
 
 export function DomesticCleaningHub() {
-  const services = useActiveServices();
+  const services = useActiveServices().filter((s) => s.kind !== "trade");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("popular");
   const [q, setQ] = useState("");
@@ -33,8 +34,8 @@ export function DomesticCleaningHub() {
     const term = q.trim().toLowerCase();
     const out = services.filter((s) => f.match(s.slug) && (!term || `${s.name} ${s.short} ${s.includes.join(" ")}`.toLowerCase().includes(term)));
     return [...out].sort((a, b) => {
-      if (sort === "price-asc") return a.hourlyRate - b.hourlyRate;
-      if (sort === "price-desc") return b.hourlyRate - a.hourlyRate;
+      if (sort === "price-asc") return (startingPrice(a) ?? 999) - (startingPrice(b) ?? 999);
+      if (sort === "price-desc") return (startingPrice(b) ?? -1) - (startingPrice(a) ?? -1);
       if (sort === "name") return a.name.localeCompare(b.name);
       return Number(b.popular) - Number(a.popular);
     });
@@ -51,7 +52,7 @@ export function DomesticCleaningHub() {
               <Star className="size-5 fill-sun text-sun" /> <strong className="text-ink">4.9/5</strong> · 12,480 reviews
             </p>
             <ul className="mt-6 space-y-2.5 text-[17px]">
-              {["Hourly rate from £16.50/hr", "No contract & total flexibility", "DBS-checked pros, available from tomorrow (7/7)"].map((t) => (
+              {["Regular cleaning £17/hr · one-off £20/hr", "No contract & total flexibility", "DBS-checked pros, available from tomorrow (7/7)"].map((t) => (
                 <li key={t} className="flex items-center gap-3">
                   <Check className="size-5 text-success" strokeWidth={3} /> {t}
                 </li>

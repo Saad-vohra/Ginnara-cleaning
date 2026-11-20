@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, CalendarX, CheckCircle2, Home, LayoutDashboard, LogOut, MapPin, Pencil, Plus, Settings, Sparkles, Star, Trash2, User, Wallet } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Home, LayoutDashboard, LogOut, MapPin, Pencil, Plus, Settings, Sparkles, Star, Trash2, User, Wallet } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,11 +13,12 @@ import { ConfirmDialog, Modal } from "@/components/common/Modal";
 import { useToast } from "@/components/common/Toast";
 import { Badge, EmptyState, PillTabs, Spinner, StatusBadge } from "@/components/common/ui";
 import { BookingDetails } from "@/components/booking/BookingDetails";
+import { BookingCalendar, TimeGrid } from "@/components/booking/flow/ui";
 import { StatCard, Panel } from "./DashboardShell";
 import { useCurrentCustomer, useHydrated, useStore } from "@/hooks/useStore";
 import { logoutCustomer } from "@/lib/auth";
 import { notify } from "@/lib/admin";
-import { hoursUntil, isUpcoming, setBookingStatus } from "@/lib/bookings";
+import { cancelBooking, cancellationTerms, canReschedule, isUpcoming, POLICY, POLICY_LINES, rescheduleBooking } from "@/lib/bookings";
 import { insert, patch, removeWhere, update } from "@/lib/storage";
 import { addressSchema, emailField, nameField, passwordField, phoneField, type AddressValues } from "@/lib/validation";
 import { cn, formatDate, gbp2, initials, sleep, uid } from "@/lib/utils";
@@ -194,6 +195,7 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
   const [filter, setFilter] = useState<"upcoming" | "past" | "cancelled">("upcoming");
   const [viewRef, setViewRef] = useState<string | null>(initialRef);
   const [cancelRef, setCancelRef] = useState<string | null>(null);
+  const [rescheduleRef, setRescheduleRef] = useState<string | null>(null);
   const [reviewFor, setReviewFor] = useState<Booking | null>(null);
   const reviews = useStore("reviews");
   const services = useStore("services");
@@ -206,6 +208,8 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
   const list = lists[filter];
   const viewing = mine.find((b) => b.ref === viewRef);
   const cancelling = mine.find((b) => b.ref === cancelRef);
+  const rescheduling = mine.find((b) => b.ref === rescheduleRef);
+  const terms = cancelling ? cancellationTerms(cancelling) : null;
 
   return (
     <Panel>
@@ -240,6 +244,12 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
                     <p className="truncate text-xs text-muted">
                       {b.ref} · {b.address.postcode}
                     </p>
+                    {b.status === "cancelled" && b.refundPct !== undefined && (
+                      <p className="mt-1 text-xs font-semibold text-ink-soft">
+                        {b.refundPct === 100 ? `Full refund · ${gbp2(b.refundAmount ?? 0)}` : b.refundPct > 0 ? `${b.refundPct}% refund · ${gbp2(b.refundAmount ?? 0)} back, ${gbp2(b.cancellationFee ?? 0)} fee` : `No refund · ${gbp2(b.cancellationFee ?? 0)} charged`}
+                      </p>
+                    )}
+                    {b.rescheduledFrom && b.status !== "cancelled" && <p className="mt-1 text-xs text-ink-soft">Rescheduled from {formatDate(b.rescheduledFrom.date, { day: "numeric", month: "short" })} at {b.rescheduledFrom.time}</p>}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -247,6 +257,11 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
                   <Button size="sm" variant="soft" onClick={() => setViewRef(b.ref)}>
                     Details
                   </Button>
+                  {isUpcoming(b) && (
+                    <Button size="sm" variant="ghost" icon={<CalendarClock className="size-4" />} onClick={() => setRescheduleRef(b.ref)}>
+                      Reschedule
+                    </Button>
+                  )}
                   {isUpcoming(b) && (
                     <Button size="sm" variant="ghost" className="text-danger" onClick={() => setCancelRef(b.ref)}>
                       Cancel
@@ -270,7 +285,7 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
         </ul>
       )}
 
-      <Modal open={!!viewing} onClose={() => setViewRef(null)} title="Booking details" size="lg" footer={viewing && isUpcoming(viewing) ? <Button variant="danger" onClick={() => { setCancelRef(viewing.ref); setViewRef(null); }}>Cancel booking</Button> : undefined}>
+      <Modal open={!!viewing} onClose={() => setViewRef(null)} title="Booking details" size="lg" footer={viewing && isUpcoming(viewing) ? <><Button variant="outline" onClick={() => { setRescheduleRef(viewing.ref); setViewRef(null); }}>Reschedule</Button><Button variant="danger" onClick={() => { setCancelRef(viewing.ref); setViewRef(null); }}>Cancel booking</Button></> : undefined}>
         {viewing && <BookingDetails booking={viewing} compact />}
       </Modal>
 
@@ -278,17 +293,105 @@ function Bookings({ initialRef }: { initialRef: string | null }) {
         open={!!cancelling}
         onClose={() => setCancelRef(null)}
         title="Cancel this booking?"
-        description={cancelling ? `${cancelling.serviceName} on ${formatDate(cancelling.date)} at ${cancelling.time}. ${hoursUntil(cancelling) < 24 ? "This is within 24 hours — a 50% late cancellation fee would normally apply (not charged in this demo)." : "Free cancellation — you won't be charged."}` : ""}
+        description={
+          cancelling && terms
+            ? `${cancelling.serviceName} on ${formatDate(cancelling.date)} at ${cancelling.time} (${gbp2(cancelling.pricing.total)}). ${
+                terms.pct === 100
+                  ? `It's more than ${POLICY.fullRefundHours} hours away, so you'll get a full refund of ${gbp2(terms.refund)}.`
+                  : terms.pct > 0
+                    ? `It's less than ${POLICY.fullRefundHours} hours away, so you'll get a ${terms.pct}% refund of ${gbp2(terms.refund)} and ${gbp2(terms.fee)} will be kept as a late-cancellation fee.`
+                    : `It's less than ${POLICY.noRefundHours} hours away, so no refund is due and the full ${gbp2(terms.fee)} will be charged.`
+              } (Demo: no money moves.)`
+            : ""
+        }
         confirmLabel="Yes, cancel it"
         onConfirm={async () => {
           await sleep(500);
-          if (cancelling) setBookingStatus(cancelling.ref, "cancelled");
-          success("Booking cancelled", "We've let your pro know (demo).");
+          if (!cancelling) return;
+          const t = cancelBooking(cancelling.ref);
+          success("Booking cancelled", t ? (t.pct === 100 ? `Full refund of ${gbp2(t.refund)} (demo).` : t.pct > 0 ? `${t.pct}% refund of ${gbp2(t.refund)} (demo).` : "No refund is due (demo).") : undefined);
         }}
       />
 
+      {rescheduling && <RescheduleModal booking={rescheduling} onClose={() => setRescheduleRef(null)} onCancelInstead={() => { setRescheduleRef(null); setCancelRef(rescheduling.ref); }} />}
+
       <ReviewModal booking={reviewFor} customerName={customer.name} onClose={() => setReviewFor(null)} />
     </Panel>
+  );
+}
+
+function RescheduleModal({ booking, onClose, onCancelInstead }: { booking: Booking; onClose: () => void; onCancelInstead: () => void }) {
+  const { success } = useToast();
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const allowed = canReschedule(booking);
+
+  if (!allowed) {
+    return (
+      <Modal open onClose={onClose} title="Rescheduling is closed" size="sm" footer={<><Button variant="ghost" onClick={onClose}>Keep booking</Button><Button variant="danger" onClick={onCancelInstead}>Cancel instead</Button></>}>
+        <p className="text-[15px] leading-relaxed text-ink-soft">
+          Bookings can only be rescheduled more than <strong className="text-ink">{POLICY.rescheduleHours} hours</strong> before the start time. Your {booking.serviceName.toLowerCase()} on {formatDate(booking.date)} at {booking.time} is less than {POLICY.rescheduleHours} hours away.
+        </p>
+        <PolicyList className="mt-4" />
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Reschedule booking"
+      description={`Currently ${formatDate(booking.date)} at ${booking.time} · ${booking.ref}`}
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Keep current time
+          </Button>
+          <Button
+            loading={saving}
+            disabled={!date || !time}
+            onClick={async () => {
+              setSaving(true);
+              await sleep(400);
+              const r = rescheduleBooking(booking.ref, date, time);
+              setSaving(false);
+              if (!r.ok) return setError(r.error);
+              success("Booking rescheduled", `${formatDate(date)} at ${time}`);
+              onClose();
+            }}
+          >
+            Confirm new time
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-5 rounded-2xl bg-cream-2 px-4 py-3 text-sm text-ink-soft">Free to reschedule — available until {POLICY.rescheduleHours} hours before your current start time. Your price stays the same.</p>
+      <p className="mb-3 font-extrabold">1. Choose a new date</p>
+      <BookingCalendar value={date} onChange={(d) => { setDate(d); setTime(""); setError(""); }} />
+      {date && (
+        <>
+          <p className="mt-6 mb-3 font-extrabold">2. Choose a start time</p>
+          <TimeGrid date={date} primary={time} alts={[]} onPick={(t) => { setTime(t === time ? "" : t); setError(""); }} />
+        </>
+      )}
+      {error && <p role="alert" className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
+    </Modal>
+  );
+}
+
+export function PolicyList({ className }: { className?: string }) {
+  return (
+    <ul className={cn("space-y-1.5 text-sm text-ink-soft", className)}>
+      {POLICY_LINES.map((l) => (
+        <li key={l} className="flex gap-2">
+          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" /> {l}
+        </li>
+      ))}
+    </ul>
   );
 }
 

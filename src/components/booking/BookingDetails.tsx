@@ -141,8 +141,19 @@ export function BookingDetails({ booking, compact }: { booking: Booking; compact
         </div>
         <p className="px-1 text-xs text-muted">
           Booked {formatDateTime(booking.createdAt)}
+          {booking.rescheduledAt && booking.rescheduledFrom ? ` · Rescheduled ${formatDateTime(booking.rescheduledAt)} (was ${formatDate(booking.rescheduledFrom.date)} at ${booking.rescheduledFrom.time})` : ""}
           {booking.cancelledAt ? ` · Cancelled ${formatDateTime(booking.cancelledAt)}` : ""}
         </p>
+        {booking.status === "cancelled" && booking.refundPct !== undefined && (
+          <p className="rounded-2xl bg-cream-2 px-4 py-3 text-sm">
+            <span className="font-semibold">Cancellation: </span>
+            {booking.refundPct === 100
+              ? `full refund of £${(booking.refundAmount ?? 0).toFixed(2)}.`
+              : booking.refundPct > 0
+                ? `${booking.refundPct}% refund of £${(booking.refundAmount ?? 0).toFixed(2)} · late-cancellation fee £${(booking.cancellationFee ?? 0).toFixed(2)}.`
+                : `cancelled less than 4 hours before — no refund, £${(booking.cancellationFee ?? 0).toFixed(2)} charged.`}
+          </p>
+        )}
       </div>
     </div>
   );

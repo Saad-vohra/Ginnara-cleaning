@@ -47,35 +47,45 @@ export function PricingAdmin() {
 function Rates() {
   const services = useStore("services");
   const { success } = useToast();
-  const [draft, setDraft] = useState<Record<string, { rate: string; min: string }>>({});
-  const val = (id: string, k: "rate" | "min", fallback: number) => draft[id]?.[k] ?? String(fallback);
+  const [draft, setDraft] = useState<Record<string, { rate: string; min: string; oneOff?: string }>>({});
+  const val = (id: string, k: "rate" | "min" | "oneOff", fallback: number) => draft[id]?.[k] ?? String(fallback);
+  const hourly = services.filter((s) => s.bookingMode !== "quote" && !s.packages?.length);
+  const fixed = services.filter((s) => s.packages?.length);
+  const quote = services.filter((s) => s.bookingMode === "quote");
   return (
+    <>
     <Panel title="Hourly rates & minimum hours">
       <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-cream-2 text-left text-xs text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Service</th>
-              <th className="px-4 py-3">Rate (£/h)</th>
+              <th className="px-4 py-3">Regular rate (£/h)</th>
+              <th className="px-4 py-3">One-off rate (£/h)</th>
               <th className="px-4 py-3">Minimum hours</th>
               <th className="px-4 py-3">Minimum booking</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {services.map((s) => {
+            {hourly.map((s) => {
               const rate = Number(val(s.id, "rate", s.hourlyRate));
               const min = Number(val(s.id, "min", s.minHours));
-              const changed = rate !== s.hourlyRate || min !== s.minHours;
-              const invalid = !(rate >= 5 && rate <= 80) || !(min >= 1 && min <= 8);
+              const oneOff = Number(val(s.id, "oneOff", s.oneOffRate ?? 0));
+              const changed = rate !== s.hourlyRate || min !== s.minHours || oneOff !== (s.oneOffRate ?? 0);
+              const invalid = !(rate >= 5 && rate <= 80) || !(min >= 1 && min <= 8) || !(oneOff === 0 || (oneOff >= 5 && oneOff <= 80));
+              const set = (k: "rate" | "min" | "oneOff", v: string) => setDraft((d) => ({ ...d, [s.id]: { rate: val(s.id, "rate", s.hourlyRate), min: val(s.id, "min", s.minHours), oneOff: val(s.id, "oneOff", s.oneOffRate ?? 0), [k]: v } }));
               return (
                 <tr key={s.id}>
                   <td className="px-4 py-3 font-semibold">{s.name}</td>
                   <td className="px-4 py-3">
-                    <input aria-label={`${s.name} rate`} type="number" step="0.1" value={val(s.id, "rate", s.hourlyRate)} onChange={(e) => setDraft((d) => ({ ...d, [s.id]: { rate: e.target.value, min: val(s.id, "min", s.minHours) } }))} className="h-10 w-28 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
+                    <input aria-label={`${s.name} rate`} type="number" step="0.1" value={val(s.id, "rate", s.hourlyRate)} onChange={(e) => set("rate", e.target.value)} className="h-10 w-24 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
                   </td>
                   <td className="px-4 py-3">
-                    <input aria-label={`${s.name} minimum hours`} type="number" step="0.5" value={val(s.id, "min", s.minHours)} onChange={(e) => setDraft((d) => ({ ...d, [s.id]: { rate: val(s.id, "rate", s.hourlyRate), min: e.target.value } }))} className="h-10 w-24 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
+                    <input aria-label={`${s.name} one-off rate`} type="number" step="0.1" value={val(s.id, "oneOff", s.oneOffRate ?? 0)} onChange={(e) => set("oneOff", e.target.value)} className="h-10 w-24 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input aria-label={`${s.name} minimum hours`} type="number" step="0.5" value={val(s.id, "min", s.minHours)} onChange={(e) => set("min", e.target.value)} className="h-10 w-20 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
                   </td>
                   <td className="px-4 py-3 text-ink-soft">{invalid ? "—" : gbp2(rate * min)}</td>
                   <td className="px-4 py-3 text-right">
@@ -83,8 +93,8 @@ function Rates() {
                       size="sm"
                       disabled={!changed || invalid}
                       onClick={() => {
-                        patch("services", (x) => x.id === s.id, { hourlyRate: rate, minHours: min });
-                        logActivity("Pricing", `Set ${s.name} to ${gbp2(rate)}/h, min ${min}h`, s.name);
+                        patch("services", (x) => x.id === s.id, { hourlyRate: rate, minHours: min, oneOffRate: oneOff > 0 ? oneOff : undefined });
+                        logActivity("Pricing", `Set ${s.name} to ${gbp2(rate)}/h${oneOff > 0 ? ` (one-off ${gbp2(oneOff)}/h)` : ""}, min ${min}h`, s.name);
                         setDraft((d) => {
                           const n = { ...d };
                           delete n[s.id];
@@ -102,8 +112,19 @@ function Rates() {
           </tbody>
         </table>
       </div>
-      <DemoNote className="mt-4">Rates must be between £5 and £80 per hour. Changes apply immediately to service pages and the booking form.</DemoNote>
+      <DemoNote className="mt-4">Rates must be between £5 and £80 per hour. One-off rate applies to “Just once” bookings; set 0 to use the regular rate. Changes apply immediately to service pages and the booking form.</DemoNote>
     </Panel>
+    {fixed.map((s) => (
+      <FixedPrices key={s.id} serviceId={s.id} />
+    ))}
+    {quote.length > 0 && (
+      <Panel title="WhatsApp-quote services">
+        <p className="text-sm text-ink-soft">
+          {quote.map((s) => s.name).join(", ")} can&apos;t be booked online — customers see “WhatsApp us for a quote” and “Call” buttons instead. Change this per service in Services &amp; Categories, and the WhatsApp number in Pages &amp; Content → Contact details.
+        </p>
+      </Panel>
+    )}
+    </>
   );
 }
 
@@ -348,5 +369,43 @@ function PackageModal({ initial, onClose }: { initial?: ServicePackage; onClose:
         <button type="submit" className="hidden" />
       </form>
     </Modal>
+  );
+}
+
+function FixedPrices({ serviceId }: { serviceId: string }) {
+  const service = useStore("services").find((s) => s.id === serviceId);
+  const { success } = useToast();
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  if (!service?.packages) return null;
+  const value = (id: string, fallback: number) => prices[id] ?? String(fallback);
+  const changed = service.packages.some((p) => Number(value(p.id, p.price)) !== p.price);
+  const invalid = service.packages.some((p) => !(Number(value(p.id, p.price)) >= 5 && Number(value(p.id, p.price)) <= 1000));
+  return (
+    <Panel title={`${service.name} — fixed prices`}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {service.packages.map((p) => (
+          <label key={p.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line px-4 py-3">
+            <span className="text-sm font-semibold">{p.label}</span>
+            <span className="flex items-center gap-1 text-sm">
+              £
+              <input aria-label={`${p.label} price`} type="number" step="1" value={value(p.id, p.price)} onChange={(e) => setPrices((x) => ({ ...x, [p.id]: e.target.value }))} className="h-10 w-24 rounded-xl border-[1.5px] border-line px-3 focus:border-ink focus:outline-none" />
+            </span>
+          </label>
+        ))}
+      </div>
+      <Button
+        className="mt-4"
+        size="sm"
+        disabled={!changed || invalid}
+        onClick={() => {
+          patch("services", (x) => x.id === service.id, { packages: service.packages!.map((p) => ({ ...p, price: Number(value(p.id, p.price)) })) });
+          logActivity("Pricing", `Updated ${service.name} fixed prices`, service.name);
+          setPrices({});
+          success("Prices updated", `${service.name} — live on the website`);
+        }}
+      >
+        Save prices
+      </Button>
+    </Panel>
   );
 }

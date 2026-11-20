@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ToastProvider } from "@/components/common/Toast";
+import { WhatsAppFloat } from "@/components/common/WhatsApp";
 import { CookieConsent } from "@/components/common/CookieConsent";
 
 // Fonts are bundled locally (no Google Fonts request at build/start)
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ToastProvider>
           {children}
           <CookieConsent />
+          <WhatsAppFloat />
         </ToastProvider>
       </body>
     </html>

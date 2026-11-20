@@ -1,4 +1,13 @@
-export type ServiceKind = "cleaning" | "ironing";
+export type ServiceKind = "cleaning" | "ironing" | "trade";
+
+/** Fixed-price option chosen by property size (e.g. Airbnb turnovers) */
+export interface ServicePackageOption {
+  id: string;
+  label: string;
+  price: number;
+  /** Typical time on site, used for scheduling */
+  hours: number;
+}
 
 export interface ServiceExtra {
   id: string;
@@ -29,6 +38,14 @@ export interface Service {
   sameDay?: boolean;
   /** ServiceCategory id */
   category?: string;
+  /** Hourly rate for one-off visits; hourlyRate is then the regular (recurring) rate */
+  oneOffRate?: number;
+  /** Fixed prices by property size instead of an hourly price */
+  packages?: ServicePackageOption[];
+  /** "quote": no online booking — customers contact us on WhatsApp / phone */
+  bookingMode?: "online" | "quote";
+  /** Small print shown with the price */
+  priceNote?: string;
 }
 
 export interface Address {
@@ -53,6 +70,8 @@ export interface BookingOptions {
   supplies: boolean;
   pets: boolean;
   access: "home" | "keys" | "concierge";
+  /** Chosen fixed-price option for services with packages */
+  packageId?: string;
 }
 
 export interface PriceBreakdown {
@@ -67,6 +86,8 @@ export interface PriceBreakdown {
   couponCode?: string;
   couponDiscount: number;
   total: number;
+  /** Set when the price is a fixed package rather than hours × rate */
+  packageLabel?: string;
 }
 
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
@@ -97,6 +118,13 @@ export interface Booking {
   refundedAt?: string;
   createdAt: string;
   cancelledAt?: string;
+  /** Set when the customer cancels: share of the price refunded under the cancellation policy */
+  refundPct?: number;
+  refundAmount?: number;
+  cancellationFee?: number;
+  /** Set when the customer moves the booking to a new date/time */
+  rescheduledAt?: string;
+  rescheduledFrom?: { date: string; time: string };
 }
 
 export interface Customer {
@@ -187,6 +215,8 @@ export interface SiteContent {
 }
 
 export interface SiteSettings {
+  /** Number customers message for quotes (WhatsApp) */
+  whatsappNumber: string;
   serviceFee: number;
   weeklyDiscount: number;
   fortnightlyDiscount: number;
@@ -250,7 +280,7 @@ export interface ConsentState {
   decidedAt?: string;
 }
 
-export type PaymentStatus = "authorised" | "paid" | "refunded" | "voided";
+export type PaymentStatus = "authorised" | "paid" | "partially_refunded" | "refunded" | "voided";
 
 export interface ServiceCategory {
   id: string;

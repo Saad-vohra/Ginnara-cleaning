@@ -20,6 +20,8 @@ export const SEED_CATEGORIES: ServiceCategory[] = [
   { id: "cat-home", name: "Home cleaning", description: "Houses and flats — general, deep and move-in/move-out cleans", color: "#2e5ea8" },
   { id: "cat-business", name: "Business cleaning", description: "Offices, studios and commercial spaces", color: "#1f3f78" },
   { id: "cat-events", name: "Events", description: "Before and after parties, celebrations and gatherings", color: "#2e8b3c" },
+  { id: "cat-airbnb", name: "Airbnb & short lets", description: "Fixed-price turnovers between guests", color: "#ff5a5f" },
+  { id: "cat-other", name: "Other home services", description: "Plumbing and house moving — quotes on WhatsApp", color: "#25d366" },
 ];
 
 export const SEED_LOCATIONS: Location[] = CITIES.map((c) => ({ id: `loc-${c.slug}`, slug: c.slug, name: c.name, region: c.region, postcodes: [...c.postcodes], active: true }));
@@ -33,7 +35,7 @@ export const SEED_PACKAGES: ServicePackage[] = [
 
 export const SEED_ACTIVITY: ActivityEntry[] = [
   { id: "act-1", at: ago(35), actorId: "adm-manager", actorName: "Nadia Khan", category: "Bookings", action: "Assigned Zara Malik to booking", target: "GN-W2JX4H" },
-  { id: "act-2", at: ago(120), actorId: "adm-owner", actorName: "Saad Vohra", category: "Pricing", action: "Changed Deep Cleaning rate to £18.00/h", target: "Deep Cleaning" },
+  { id: "act-2", at: ago(120), actorId: "adm-owner", actorName: "Saad Vohra", category: "Pricing", action: "Changed Deep Cleaning rate to £22.00/h", target: "Deep Cleaning" },
   { id: "act-3", at: ago(300), actorId: "adm-staff", actorName: "Leo Fischer", category: "Enquiries", action: "Replied to enquiry", target: "Office cleaning quote" },
   { id: "act-4", at: ago(60 * 26), actorId: "adm-owner", actorName: "Saad Vohra", category: "Professionals", action: "Approved professional", target: "Hannah Clarke" },
   { id: "act-5", at: ago(60 * 50), actorId: "adm-manager", actorName: "Nadia Khan", category: "Coupons", action: "Created coupon", target: "FRESH20" },

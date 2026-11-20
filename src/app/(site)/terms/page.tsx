@@ -18,8 +18,10 @@ export default function TermsPage() {
             <p>When you book a clean you request a service from an independent professional. Bookings are confirmed once a professional accepts them. Prices shown include our service and insurance fee.</p>
             <h2>3. Cancellations</h2>
             <ul>
-              <li>Free cancellation up to 24 hours before the start time.</li>
-              <li>Cancellations within 24 hours may incur a fee of 50% of the booking value.</li>
+              <li>Cancel more than 24 hours before the start time: free, with a full refund.</li>
+              <li>Cancel between 24 and 4 hours before the start time: 50% of the booking value is refunded.</li>
+              <li>Cancel less than 4 hours before the start time: no refund.</li>
+              <li>You can reschedule free of charge up to 24 hours before the start time. After that, the booking can only be cancelled under the terms above.</li>
               <li>If your professional cancels, you&apos;ll be offered a replacement or a full refund.</li>
             </ul>
             <h2>4. Satisfaction guarantee</h2>

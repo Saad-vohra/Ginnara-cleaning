@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BadgeCheck, CalendarCheck, Check, ChevronRight, Clock, FileCheck2, Home, Plus, Star, X } from "lucide-react";
+import { BadgeCheck, CalendarCheck, Camera, Check, ChevronRight, Clock, FileCheck2, Home, MessageCircle, Plus, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Service } from "@/types";
@@ -14,6 +14,8 @@ import { useStore } from "@/hooks/useStore";
 import { extraById } from "@/lib/extras";
 import { recommendedHours } from "@/lib/pricing";
 import { bookingHref } from "@/lib/routes";
+import { isQuoteOnly, priceLabel } from "@/lib/services";
+import { QuoteActions } from "@/components/common/WhatsApp";
 import { cn, gbp2 } from "@/lib/utils";
 
 export function Breadcrumbs({ items, light }: { items: { href?: string; label: string }[]; light?: boolean }) {
@@ -39,30 +41,50 @@ export function Breadcrumbs({ items, light }: { items: { href?: string; label: s
 }
 
 export function ServiceHero({ service }: { service: Service }) {
+  const quote = isQuoteOnly(service);
+  const trade = service.kind === "trade";
+  const priceLine = quote ? (
+    <>Free quote — <strong>message us on WhatsApp</strong></>
+  ) : service.packages?.length ? (
+    <>Fixed prices <strong>{priceLabel(service)}</strong> by property size</>
+  ) : service.oneOffRate ? (
+    <>Regular <strong>£{service.hourlyRate}/hr</strong> · one-off <strong>£{service.oneOffRate}/hr</strong></>
+  ) : (
+    <>Hourly rate from <strong>£{service.hourlyRate.toFixed(2)}/hr</strong></>
+  );
   return (
     <section className="relative overflow-hidden bg-cream">
       <div className="container-site grid items-center gap-10 py-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-16">
         <div>
-          <Breadcrumbs items={[{ href: "/domestic-cleaning", label: "Cleaning" }, { label: service.name }]} />
+          <Breadcrumbs items={[trade ? { label: "Home services" } : { href: "/domestic-cleaning", label: "Cleaning" }, { label: service.name }]} />
           <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-5 text-[2.6rem] leading-[1] font-extrabold text-balance sm:text-6xl">
-            {service.name} near you
+            {trade ? `${service.name} in London` : `${service.name} near you`}
           </motion.h1>
           <p className="mt-4 flex flex-wrap items-center gap-2 text-[15px] text-ink-soft">
             <Star className="size-5 fill-sun text-sun" /> <strong className="text-ink">4.9/5</strong> · 12,480 reviews
           </p>
           <ul className="mt-6 space-y-2.5 text-[17px]">
             <li className="flex items-center gap-3">
-              <Check className="size-5 text-success" strokeWidth={3} /> Hourly rate from <strong>£{service.hourlyRate.toFixed(2)}/hr</strong>
+              <Check className="size-5 text-success" strokeWidth={3} /> <span>{priceLine}</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="size-5 text-success" strokeWidth={3} /> No contract & total flexibility
+              <Check className="size-5 text-success" strokeWidth={3} /> {quote ? "Send photos or details — we reply fast" : "No contract & total flexibility"}
             </li>
             <li className="flex items-center gap-3">
-              <Check className="size-5 text-success" strokeWidth={3} /> DBS-checked pros, available {service.sameDay ? "today" : "from tomorrow"} (7/7)
+              <Check className="size-5 text-success" strokeWidth={3} /> {trade ? "Reliable, insured local team" : `DBS-checked pros, available ${service.sameDay ? "today" : "from tomorrow"} (7/7)`}
             </li>
           </ul>
-          <PostcodeSearch defaultService={service.slug} hideService className="mt-8 max-w-xl" ctaLabel={`Book ${service.kind === "ironing" ? "ironing" : "my cleaning"}`} />
-          <p className="mt-3 text-sm text-muted">Free quote · no commitment · cancel free up to 24h before</p>
+          {quote ? (
+            <>
+              <QuoteActions service={service} size="lg" className="mt-8" />
+              <p className="mt-3 text-sm text-muted">{service.priceNote ?? "Free quote · no commitment"}</p>
+            </>
+          ) : (
+            <>
+              <PostcodeSearch defaultService={service.slug} hideService className="mt-8 max-w-xl" ctaLabel={`Book ${service.kind === "ironing" ? "ironing" : "my cleaning"}`} />
+              <p className="mt-3 text-sm text-muted">{service.priceNote ?? "Free quote · no commitment · cancel free up to 24h before"}</p>
+            </>
+          )}
         </div>
         <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="relative">
           <div className="relative aspect-[4/3.4] overflow-hidden rounded-[40px] shadow-lift">
@@ -73,8 +95,8 @@ export function ServiceHero({ service }: { service: Service }) {
               <CalendarCheck className="size-6" />
             </span>
             <div>
-              <p className="text-xs text-muted">Next available</p>
-              <p className="font-bold">{service.sameDay ? "Today, from 3pm" : "Tomorrow, 9:00"}</p>
+              <p className="text-xs text-muted">{quote ? "Quotes" : "Next available"}</p>
+              <p className="font-bold">{quote ? "Usually within the hour" : service.sameDay ? "Today, from 3pm" : "Tomorrow, 9:00"}</p>
             </div>
           </div>
         </motion.div>
@@ -85,6 +107,23 @@ export function ServiceHero({ service }: { service: Service }) {
 
 function PricingTable({ service }: { service: Service }) {
   const settings = useStore("settings");
+  if (service.packages?.length) {
+    return (
+      <div className="overflow-hidden rounded-3xl border border-line bg-white">
+        <div className="grid grid-cols-[1.6fr_1fr] gap-2 bg-ink px-5 py-4 text-sm font-semibold text-white sm:px-7">
+          <span>Property size</span>
+          <span className="text-right">Fixed price</span>
+        </div>
+        {service.packages.map((p) => (
+          <div key={p.id} className="grid grid-cols-[1.6fr_1fr] items-center gap-2 border-t border-line px-5 py-4 text-[15px] sm:px-7">
+            <span className="font-medium">{p.label}</span>
+            <span className="text-right font-display text-xl font-extrabold">£{p.price}</span>
+          </div>
+        ))}
+        {service.priceNote && <p className="border-t border-line bg-cream-2 px-5 py-4 text-sm text-ink-soft sm:px-7">{service.priceNote}</p>}
+      </div>
+    );
+  }
   const sizes = service.kind === "ironing"
     ? [
         { label: "Small basket (≈15 items)", beds: 1, baths: 1, hours: 1 },
@@ -97,23 +136,37 @@ function PricingTable({ service }: { service: Service }) {
         { label: "3 bedrooms, 2 bathrooms", beds: 3, baths: 2 },
         { label: "4 bedrooms, 2 bathrooms", beds: 4, baths: 2 },
       ].map((s) => ({ ...s, hours: recommendedHours(service, s.beds, s.baths) }));
+  const oneOff = service.oneOffRate;
+  const cols = oneOff ? "grid-cols-[1.3fr_0.6fr_0.9fr_0.9fr]" : "grid-cols-[1.4fr_0.8fr_1fr]";
   return (
     <div className="overflow-hidden rounded-3xl border border-line bg-white">
-      <div className="grid grid-cols-[1.4fr_0.8fr_1fr] gap-2 bg-ink px-5 py-4 text-sm font-semibold text-white sm:px-7">
+      <div className={cn("grid gap-2 bg-ink px-5 py-4 text-sm font-semibold text-white sm:px-7", cols)}>
         <span>Your home</span>
         <span>Typical time</span>
-        <span className="text-right">Estimated price</span>
+        {oneOff ? (
+          <>
+            <span className="text-right">Regular</span>
+            <span className="text-right">One-off</span>
+          </>
+        ) : (
+          <span className="text-right">Estimated price</span>
+        )}
       </div>
       {sizes.map((s) => (
-        <div key={s.label} className="grid grid-cols-[1.4fr_0.8fr_1fr] items-center gap-2 border-t border-line px-5 py-4 text-[15px] sm:px-7">
+        <div key={s.label} className={cn("grid items-center gap-2 border-t border-line px-5 py-4 text-[15px] sm:px-7", cols)}>
           <span className="font-medium">{s.label}</span>
           <span className="flex items-center gap-1.5 text-ink-soft">
             <Clock className="size-4" /> {s.hours}h
           </span>
           <span className="text-right font-bold">{gbp2(s.hours * service.hourlyRate)}</span>
+          {oneOff && <span className="text-right font-bold">{gbp2(s.hours * oneOff)}</span>}
         </div>
       ))}
-      {service.allowsFrequency && (
+      {oneOff ? (
+        <p className="border-t border-line bg-cream-2 px-5 py-4 text-sm text-ink-soft sm:px-7">
+          Regular cleaning (weekly or fortnightly) <strong className="text-ink">£{service.hourlyRate}/hr</strong> · One-off cleaning <strong className="text-ink">£{oneOff}/hr</strong>
+        </p>
+      ) : service.allowsFrequency && (
         <div className="flex flex-wrap gap-2 border-t border-line bg-cream-2 px-5 py-4 text-sm sm:px-7">
           <Badge tone="success">Weekly −{settings.weeklyDiscount}%</Badge>
           <Badge tone="info">Fortnightly −{settings.fortnightlyDiscount}%</Badge>
@@ -134,15 +187,26 @@ export function ServiceBody({ service }: { service: Service }) {
   const packages = useStore("packages").filter((p) => p.active && p.serviceId === service.id);
   const faqs = useMemo(
     () => [
-      { category: "Service", q: `What's included in ${service.name.toLowerCase()}?`, a: `${service.includes.join(", ")}. You can add extras such as ${service.extras.map((e) => extraById(e)?.label.toLowerCase()).filter(Boolean).slice(0, 3).join(", ")} when booking.` },
-      { category: "Service", q: `How much does ${service.name.toLowerCase()} cost?`, a: `Prices start from £${service.hourlyRate.toFixed(2)} per hour with a minimum of ${service.minHours} ${service.minHours === 1 ? "hour" : "hours"}. Your exact price depends on the size of your home and any extras, and is shown in full before you book.` },
+      { category: "Service", q: `What's included in ${service.name.toLowerCase()}?`, a: `${service.includes.join(", ")}.${service.extras.length ? ` You can add extras such as ${service.extras.map((e) => extraById(e)?.label.toLowerCase()).filter(Boolean).slice(0, 3).join(", ")} when booking.` : ""}` },
+      {
+        category: "Service",
+        q: `How much does ${service.name.toLowerCase()} cost?`,
+        a: isQuoteOnly(service)
+          ? `${service.priceNote ?? "Every job is different."} Tap the WhatsApp button, tell us what you need (photos help) and we'll send a free, no-obligation quote.`
+          : service.packages?.length
+            ? `Fixed prices: ${service.packages.map((p) => `${p.label} £${p.price}`).join(", ")}. ${service.priceNote ?? ""}`
+            : service.oneOffRate
+              ? `Regular cleaning is £${service.hourlyRate} per hour and one-off cleaning is £${service.oneOffRate} per hour, with a minimum of ${service.minHours} hours. Your exact price is shown in full before you book.`
+              : `Prices start from £${service.hourlyRate.toFixed(2)} per hour with a minimum of ${service.minHours} ${service.minHours === 1 ? "hour" : "hours"}. Your exact price depends on the size of your home and any extras, and is shown in full before you book.`,
+      },
       ...storedFaqs.filter((f) => ["Booking", "Cleaners"].includes(f.category)).slice(0, 4),
     ],
     [service, storedFaqs],
   );
 
   const [extraInfo, setExtraInfo] = useState<string | null>(null);
-  const notIncluded = service.kind === "ironing" ? ["Dry-clean-only garments", "Collection & delivery", "Laundry (add as an extra)"] : ["Exterior windows above ground floor", "Moving heavy furniture", "Carpet shampooing", "Biohazard cleaning"];
+  const quote = isQuoteOnly(service);
+  const notIncluded = service.kind === "trade" ? [] : service.kind === "ironing" ? ["Dry-clean-only garments", "Collection & delivery", "Laundry (add as an extra)"] : ["Exterior windows above ground floor", "Moving heavy furniture", "Carpet shampooing", "Biohazard cleaning"];
 
   return (
     <>
@@ -153,9 +217,13 @@ export function ServiceBody({ service }: { service: Service }) {
             <p className="mb-3 text-[13px] font-bold tracking-[0.14em] text-brand uppercase">{service.tagline}</p>
             <h2 className="text-4xl leading-[1.05] font-extrabold sm:text-5xl">Why book {service.name.toLowerCase()} with Ginnara?</h2>
             <p className="mt-5 text-lg leading-relaxed text-ink-soft">{service.description}</p>
-            <LinkButton href={bookingHref({ service: service.slug })} size="lg" className="mt-8">
-              Get my price
-            </LinkButton>
+            {quote ? (
+              <QuoteActions service={service} className="mt-8" />
+            ) : (
+              <LinkButton href={bookingHref({ service: service.slug })} size="lg" className="mt-8">
+                Get my price
+              </LinkButton>
+            )}
           </Reveal>
           <div className="grid gap-4 sm:grid-cols-2">
             {service.features.map((f, i) => {
@@ -175,7 +243,52 @@ export function ServiceBody({ service }: { service: Service }) {
         </div>
       </section>
 
+      {/* Quote-only services: how to get a price */}
+      {quote && (
+        <section className="bg-cream py-20 lg:py-24" id="pricing">
+          <div className="container-site grid gap-10 lg:grid-cols-2">
+            <div>
+              <SectionHeading eyebrow="Pricing" title="Get a free quote on WhatsApp" intro={service.priceNote} className="!mb-8" />
+              <ol className="space-y-5">
+                {[
+                  { icon: MessageCircle, t: "Message us on WhatsApp", d: "Tap the button — your message is already started for you." },
+                  { icon: Camera, t: "Tell us about the job", d: service.kind === "trade" && service.slug === "house-moving" ? "Your moving date, both addresses and roughly how much you're moving." : service.kind === "trade" ? "What's wrong or what you need fitted — photos help us price it accurately." : "The property size and when you need it — photos help us price it accurately." },
+                  { icon: BadgeCheck, t: "Get your price & book", d: "We reply with a clear quote and the earliest date we can do it." },
+                ].map((s, i) => (
+                  <li key={s.t} className="flex gap-4">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-ink text-white">
+                      <s.icon className="size-5" />
+                    </span>
+                    <div>
+                      <p className="text-lg font-extrabold">
+                        {i + 1}. {s.t}
+                      </p>
+                      <p className="text-ink-soft">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <QuoteActions service={service} className="mt-8" />
+            </div>
+            <div className="rounded-3xl bg-white p-6 sm:p-8">
+              <h3 className="text-xl font-extrabold">What we can help with</h3>
+              <ul className="mt-5 grid gap-3">
+                {service.includes.map((inc) => (
+                  <li key={inc} className="flex items-start gap-3">
+                    <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success">
+                      <Check className="size-4" strokeWidth={3} />
+                    </span>
+                    <span className="text-[15px]">{inc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Options + pricing */}
+      {!quote && (
       <section className="bg-cream py-20 lg:py-24" id="pricing">
         <div className="container-site">
           <SectionHeading eyebrow="Service options & pricing" title="Clear prices, no surprises" intro="Your final price is calculated live in the booking form. Here's what most homes pay." />
@@ -231,7 +344,11 @@ export function ServiceBody({ service }: { service: Service }) {
               </ul>
               <div className="mt-8 rounded-2xl bg-cream-2 p-5">
                 <p className="text-sm text-ink-soft">
-                  Minimum booking <strong className="text-ink">{service.minHours}h</strong> · Hourly rate <strong className="text-ink">£{service.hourlyRate.toFixed(2)}</strong> · Cleaning products <strong className="text-ink">+£2/h</strong>
+                  {service.packages?.length ? (
+                    <>Fixed price <strong className="text-ink">{priceLabel(service)}</strong> · Cleaning products <strong className="text-ink">+£2/h</strong></>
+                  ) : (
+                    <>Minimum booking <strong className="text-ink">{service.minHours}h</strong> · {service.oneOffRate ? <>Regular <strong className="text-ink">£{service.hourlyRate}/hr</strong> · One-off <strong className="text-ink">£{service.oneOffRate}/hr</strong></> : <>Hourly rate <strong className="text-ink">£{service.hourlyRate.toFixed(2)}</strong></>} · Cleaning products <strong className="text-ink">+£2/h</strong></>
+                  )}
                 </p>
                 <LinkButton href={bookingHref({ service: service.slug })} className="mt-4 w-full">
                   Calculate my exact price
@@ -241,8 +358,9 @@ export function ServiceBody({ service }: { service: Service }) {
           </div>
         </div>
       </section>
+      )}
 
-      {packages.length > 0 && (
+      {packages.length > 0 && !quote && (
         <section className="py-16 lg:py-20" id="packages">
           <div className="container-site">
             <SectionHeading eyebrow="Packages" title={`Save with a ${service.name.toLowerCase()} package`} intro="Bundle several sessions together and pay less per clean." />
@@ -273,6 +391,7 @@ export function ServiceBody({ service }: { service: Service }) {
       )}
 
       {/* Reviews */}
+      {service.kind !== "trade" && (
       <section className="py-20 lg:py-24">
         <div className="container-site">
           <SectionHeading eyebrow="Customer reviews" title={`What customers say about our ${service.kind === "ironing" ? "ironing" : "cleaners"}`} action={<LinkButton href="/reviews" variant="outline">All reviews</LinkButton>} />
@@ -283,17 +402,32 @@ export function ServiceBody({ service }: { service: Service }) {
           )}
         </div>
       </section>
+      )}
 
-      <div className="bg-cream-2">
-        <HowItWorks id="steps" title={`Booking ${service.name.toLowerCase()} is easy`} />
-      </div>
+      {!quote && (
+        <div className="bg-cream-2">
+          <HowItWorks id="steps" title={`Booking ${service.name.toLowerCase()} is easy`} />
+        </div>
+      )}
       <FaqSection faqs={faqs} title={`${service.name} FAQs`} />
       <div className="bg-cream-2">
         <RelatedServices excludeSlug={service.slug} />
       </div>
-      <div className="pt-20">
-        <CtaBand title={`Book ${service.name.toLowerCase()} today`} href={bookingHref({ service: service.slug })} text={services.length ? `From £${service.hourlyRate.toFixed(2)}/hr with vetted, insured pros near you.` : ""} />
-      </div>
+      {quote ? (
+        <section className="container-site pb-20">
+          <div className="flex flex-col items-start justify-between gap-6 rounded-[36px] bg-ink p-8 text-white sm:p-12 lg:flex-row lg:items-center">
+            <div>
+              <h2 className="text-3xl font-extrabold sm:text-4xl">Need {service.name.toLowerCase()}?</h2>
+              <p className="mt-2 text-lg text-white/80">Message us on WhatsApp for a free, no-obligation quote.</p>
+            </div>
+            <QuoteActions service={service} light />
+          </div>
+        </section>
+      ) : (
+        <div className="pt-20">
+          <CtaBand title={`Book ${service.name.toLowerCase()} today`} href={bookingHref({ service: service.slug })} text={services.length ? `${priceLabel(service, { from: true })} with vetted, insured pros near you.` : ""} />
+        </div>
+      )}
     </>
   );
 }

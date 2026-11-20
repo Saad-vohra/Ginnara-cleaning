@@ -79,7 +79,7 @@ export function paymentMethodOf(b: Booking): "card" | "paypal" {
   return b.paymentMethod ?? (hash(b.ref) % 4 === 0 ? "paypal" : "card");
 }
 
-export const PAYMENT_LABEL: Record<PaymentStatus, string> = { authorised: "Authorised", paid: "Paid", refunded: "Refunded", voided: "Voided" };
+export const PAYMENT_LABEL: Record<PaymentStatus, string> = { authorised: "Authorised", paid: "Paid", partially_refunded: "Part refunded", refunded: "Refunded", voided: "Voided" };
 
 /** CSV download built in the browser */
 export function downloadCsv(filename: string, rows: (string | number)[][]) {

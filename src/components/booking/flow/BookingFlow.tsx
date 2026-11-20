@@ -14,8 +14,9 @@ import { LogoMark } from "@/components/layout/Logo";
 import { GoogleButton } from "@/components/forms/CustomerAuth";
 import { BasketRows } from "./Basket";
 import { BookingCalendar, BottomBar, InfoBox, InfoTip, OptionTile, PopularTag, Sheet, StepTitle, TimeGrid } from "./ui";
-import { useActiveServices, useCurrentCustomer, useStore } from "@/hooks/useStore";
-import { calculatePrice, defaultOptions, frequencyDiscountPct, recommendedHours } from "@/lib/pricing";
+import { useBookableServices, useCurrentCustomer, useStore } from "@/hooks/useStore";
+import { calculatePrice, defaultOptions, frequencyDiscountPct, rateFor, recommendedHours } from "@/lib/pricing";
+import { priceLabel as servicePriceLabel } from "@/lib/services";
 import { clearDraft, createBooking, emptyDraft, formatHours, loadDraft, saveDraft, type BookingDraft } from "@/lib/bookings";
 import { DEMO_ADDRESSES, formatFull, parseAddress } from "@/lib/address";
 import { extraById } from "@/lib/extras";
@@ -47,7 +48,7 @@ const recipientSchema = z.object({ name: nameField, phone: phoneField });
 export function BookingFlow() {
   const router = useRouter();
   const params = useSearchParams();
-  const services = useActiveServices();
+  const services = useBookableServices();
   const customer = useCurrentCustomer();
   const settings = useStore("settings");
   const coupons = useStore("coupons");
@@ -97,8 +98,9 @@ export function BookingFlow() {
   }, [draft, step]);
 
   const price = useMemo(() => (service && draft.options ? calculatePrice(service, draft.options, settings, { code: draft.couponCode, coupons }) : null), [service, draft.options, draft.couponCode, settings, coupons]);
-  const perHour = service && draft.options ? service.hourlyRate * (1 - (service.allowsFrequency ? frequencyDiscountPct(draft.options.frequency, settings) : 0) / 100) + (draft.options.supplies ? settings.suppliesPerHour : 0) : service?.hourlyRate;
-  const priceLabel = perHour ? `${gbp2(perHour)}/h` : "—";
+  const perHour = service && draft.options ? rateFor(service, draft.options.frequency) * (1 - (service.allowsFrequency && !service.oneOffRate ? frequencyDiscountPct(draft.options.frequency, settings) : 0) / 100) + (draft.options.supplies ? settings.suppliesPerHour : 0) : service?.hourlyRate;
+  // Fixed-price services (Airbnb) show the package total instead of an hourly rate
+  const priceLabel = service?.packages?.length ? (price ? gbp2(price.total) : "—") : perHour ? `${gbp2(perHour)}/h` : "—";
 
   const go = (target: Step) => {
     setDir(steps.indexOf(target) >= index ? 1 : -1);
@@ -252,7 +254,7 @@ export function BookingFlow() {
                 <div className="space-y-5">
                   {services.map((s, i) => {
                     const selected = s.slug === draft.serviceSlug;
-                    const promo = s.slug === "residential-cleaning" && settings.weeklyDiscount > 0;
+                    const promo = s.slug === "residential-cleaning" && settings.weeklyDiscount > 0 && !s.oneOffRate;
                     return (
                       <button
                         type="button"
@@ -275,8 +277,12 @@ export function BookingFlow() {
                               <span className="mt-1 block text-[17px]">
                                 <span className="font-bold text-brand">{gbp2(s.hourlyRate * (1 - settings.weeklyDiscount / 100))}/h</span> <span className="text-muted line-through">{gbp2(s.hourlyRate)}/h</span>
                               </span>
+                            ) : s.oneOffRate ? (
+                              <span className="mt-1 block text-[17px]">
+                                Regular {gbp2(s.hourlyRate)}/h · One-off {gbp2(s.oneOffRate)}/h
+                              </span>
                             ) : (
-                              <span className="mt-1 block text-[17px]">{gbp2(s.hourlyRate)}/h</span>
+                              <span className="mt-1 block text-[17px]">{s.packages?.length ? `${servicePriceLabel(s)} · fixed price` : `${gbp2(s.hourlyRate)}/h`}</span>
                             )}
                           </span>
                         </div>
@@ -310,7 +316,11 @@ export function BookingFlow() {
                     <OptionTile key={f} selected={freq === f} onClick={() => setOptions({ frequency: f })} className="flex items-center gap-4 py-6">
                       <span>{{ once: "Just once", weekly: "Once a week", fortnightly: "Once a fortnight" }[f]}</span>
                       {f === "weekly" && <PopularTag />}
-                      {f !== "once" && frequencyDiscountPct(f, settings) > 0 && <span className="text-sm text-success">−{frequencyDiscountPct(f, settings)}%</span>}
+                      {service.oneOffRate ? (
+                        <span className={cn("text-sm font-semibold", f === "once" ? "text-ink-soft" : "text-success")}>{gbp2(rateFor(service, f))}/h</span>
+                      ) : (
+                        f !== "once" && frequencyDiscountPct(f, settings) > 0 && <span className="text-sm text-success">−{frequencyDiscountPct(f, settings)}%</span>
+                      )}
                     </OptionTile>
                   ))}
                 </div>
@@ -318,7 +328,20 @@ export function BookingFlow() {
             )}
 
             {/* ---------------- DURATION ---------------- */}
-            {step === "duration" && service && draft.options && (
+            {step === "duration" && service && draft.options && service.packages?.length ? (
+              <>
+                <StepTitle sub="Fixed price for a full turnover clean.">What size is your property?</StepTitle>
+                <div className="flex flex-col gap-4">
+                  {service.packages.map((p) => (
+                    <OptionTile key={p.id} selected={(draft.options!.packageId ?? service.packages![0].id) === p.id} onClick={() => setOptions({ packageId: p.id, hours: p.hours })} className="flex w-full items-center justify-between gap-4 py-6">
+                      <span>{p.label}</span>
+                      <span className="font-display text-xl font-extrabold">{gbp(p.price)}</span>
+                    </OptionTile>
+                  ))}
+                </div>
+                <InfoBox className="mt-7">Includes all rooms, bathroom and kitchen, dusting, vacuuming and mopping, beds made with fresh linen (if provided) and bins emptied. {service.priceNote}</InfoBox>
+              </>
+            ) : step === "duration" && service && draft.options && (
               <>
                 <StepTitle>How long?</StepTitle>
                 <div className="grid grid-cols-3 gap-4">
@@ -532,7 +555,7 @@ export function BookingFlow() {
                 <div className="-mx-5 my-8 h-3 bg-[#f4f4f6] sm:-mx-8" />
                 <ul className="divide-y divide-line">
                   {[
-                    { icon: <span className="rounded-md border-2 border-ink px-1.5 font-display text-lg font-black">24h</span>, t: "Free cancellation", d: "Up to 24 hours before each session." },
+                    { icon: <span className="rounded-md border-2 border-ink px-1.5 font-display text-lg font-black">24h</span>, t: "Free cancellation & rescheduling", d: "Full refund or free reschedule up to 24h before. 50% refund from 24h to 4h before; no refund after that." },
                     { icon: <ClipboardCheck className="size-9 text-brand" />, t: "Cleaning experts", d: "Only home cleaning professionals." },
                     { icon: <Star className="size-9 fill-sun text-sun" />, t: "4.9/5 - Excellent", d: "Average score out of 12,480 cleaning sessions." },
                   ].map((r) => (

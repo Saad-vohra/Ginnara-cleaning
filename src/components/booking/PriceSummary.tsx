@@ -3,6 +3,7 @@
 import { CalendarDays, Clock, MapPin, Repeat, ShieldCheck, Tag } from "lucide-react";
 import type { BookingOptions, PriceBreakdown, Service } from "@/types";
 import { Photo } from "@/components/common/ui";
+import { priceLabel } from "@/lib/services";
 import { cn, formatDate, gbp2 } from "@/lib/utils";
 
 const freqLabel: Record<BookingOptions["frequency"], string> = { once: "One-off", weekly: "Every week", fortnightly: "Every 2 weeks", monthly: "Every month" };
@@ -12,9 +13,7 @@ export function PriceLines({ price, className }: { price: PriceBreakdown; classN
   return (
     <div className={cn("space-y-2.5", className)}>
       <div className={row}>
-        <span className="text-ink-soft">
-          {price.hours}h × {gbp2(price.rate)}
-        </span>
+        <span className="text-ink-soft">{price.packageLabel ? price.packageLabel : `${price.hours}h × ${gbp2(price.rate)}`}</span>
         <span className="font-semibold">{gbp2(price.base)}</span>
       </div>
       {price.extrasLines.filter((e) => e.price > 0).map((e) => (
@@ -72,7 +71,7 @@ export function PriceSummary({ service, options, price, address, date, time }: {
         </span>
         <div>
           <p className="font-extrabold">{service.name}</p>
-          <p className="text-sm text-muted">{gbp2(service.hourlyRate)}/hr</p>
+          <p className="text-sm text-muted">{priceLabel(service)}</p>
         </div>
       </div>
       <div className="space-y-2.5 border-b border-line p-5 text-sm">

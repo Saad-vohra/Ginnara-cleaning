@@ -11,6 +11,7 @@ import { Photo } from "@/components/common/ui";
 import { useActiveServices, useCurrentCustomer, useHydrated, useStore } from "@/hooks/useStore";
 import { logoutCustomer } from "@/lib/auth";
 import { CITIES } from "@/data/mock-cities";
+import { priceLabel } from "@/lib/services";
 import { cn, initials } from "@/lib/utils";
 import { serviceHref } from "@/lib/routes";
 import { useToast } from "@/components/common/Toast";
@@ -50,7 +51,8 @@ export function AnnouncementBar() {
 
 function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
   const services = useActiveServices();
-  const cleaning = services;
+  const cleaning = services.filter((s) => s.kind !== "trade");
+  const other = services.filter((s) => s.kind === "trade");
   return (
     <div className="grid w-[min(920px,calc(100vw-2rem))] grid-cols-[1fr_260px] gap-0 overflow-hidden rounded-3xl border border-line bg-white shadow-lift">
       <div className="p-6">
@@ -63,11 +65,29 @@ function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
               </span>
               <span className="min-w-0">
                 <span className="block text-[15px] font-bold text-ink group-hover:text-brand">{s.name}</span>
-                <span className="block truncate text-[13px] text-muted">from £{s.hourlyRate.toFixed(2)}/hr</span>
+                <span className="block truncate text-[13px] text-muted">{priceLabel(s, { from: true })}</span>
               </span>
             </Link>
           ))}
         </div>
+        {other.length > 0 && (
+          <>
+            <p className="mt-5 mb-3 text-xs font-bold tracking-[0.14em] text-muted uppercase">Other home services · quote on WhatsApp</p>
+            <div className="grid grid-cols-2 gap-1">
+              {other.map((s) => (
+                <Link key={s.id} href={serviceHref(s.slug)} onClick={onNavigate} className="group flex items-center gap-3 rounded-2xl p-2.5 transition hover:bg-cream">
+                  <span className="relative size-12 shrink-0 overflow-hidden rounded-xl">
+                    <Photo src={s.image} alt="" fill sizes="48px" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-bold text-ink group-hover:text-brand">{s.name}</span>
+                    <span className="block truncate text-[13px] text-[#128c4a]">Quote on WhatsApp</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <div className="flex flex-col justify-between bg-cream p-6">
         <div>

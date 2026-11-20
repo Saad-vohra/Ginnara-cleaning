@@ -8,13 +8,15 @@ import { LinkButton } from "@/components/common/Button";
 import { Photo, Reveal, SectionHeading } from "@/components/common/ui";
 import { useActiveServices, useStore } from "@/hooks/useStore";
 import { bookingHref, serviceHref } from "@/lib/routes";
+import { isQuoteOnly, priceLabel } from "@/lib/services";
+import { QuoteActions } from "@/components/common/WhatsApp";
 import { cn } from "@/lib/utils";
 
-const TILE_COLORS = ["bg-brand", "bg-sun", "bg-sky", "bg-blush", "bg-mint", "bg-lilac"];
+const TILE_COLORS = ["bg-brand", "bg-sun", "bg-sky", "bg-blush", "bg-mint", "bg-lilac", "bg-sun", "bg-sky"];
 
 /** Bold colour tiles — pick one to open that service's details just below */
 export function CategoryTiles() {
-  const featured = ["residential-cleaning", "office-cleaning", "deep-cleaning", "move-in-move-out-cleaning", "special-event-cleaning"];
+  const featured = ["residential-cleaning", "office-cleaning", "deep-cleaning", "airbnb-cleaning", "move-in-move-out-cleaning", "special-event-cleaning", "plumbing", "house-moving"];
   const services = useActiveServices();
   const tiles = featured.map((slug) => services.find((s) => s.slug === slug)).filter((s): s is NonNullable<typeof s> => Boolean(s));
   const settings = useStore("settings");
@@ -27,6 +29,9 @@ export function CategoryTiles() {
     "deep-cleaning": "plus bathroom cleaning",
     "move-in-move-out-cleaning": "plus kitchen cleaning",
     "special-event-cleaning": "before & after the party",
+    "airbnb-cleaning": "guest-ready turnovers",
+    plumbing: "leaks, taps & toilets",
+    "house-moving": "loading, moving, unloading",
   };
   const choose = (slug: string) => {
     const next = open === slug ? null : slug;
@@ -36,7 +41,7 @@ export function CategoryTiles() {
   return (
     <section className="py-16 lg:py-24">
       <div className="container-site">
-        <SectionHeading eyebrow="Our cleaning services" title="Choose your clean" intro="Tap a service to see what's included, the hourly rate and how to book." className="!mb-8" />
+        <SectionHeading eyebrow="Our cleaning services" title="Choose your service" intro="Tap a service to see what's included, prices and how to book — or get a quote on WhatsApp." className="!mb-8" />
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((s, i) => {
             const isOpen = open === s.slug;
@@ -63,7 +68,7 @@ export function CategoryTiles() {
                       <p className={cn("mt-2 text-[17px]", i === 0 ? "text-white/90" : "text-ink/80")}>{subtitle[s.slug] ?? s.short}</p>
                     </div>
                     <span className={cn("inline-flex w-fit items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition", i === 0 ? "bg-white text-ink" : "bg-ink text-white")}>
-                      {isOpen ? "Hide details" : `from £${s.hourlyRate.toFixed(2)}/hr`}
+                      {isOpen ? "Hide details" : priceLabel(s, { from: true })}
                       <ChevronDown className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
                     </span>
                   </div>
@@ -128,24 +133,64 @@ function ServiceDetail({ svc, onClose }: { svc: Service; onClose: () => void }) 
             </li>
           ))}
         </ul>
-        <div className="mt-auto flex flex-col gap-5 pt-8 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm text-muted">Hourly rate from</p>
-            <p className="font-display text-4xl font-extrabold">
-              £{svc.hourlyRate.toFixed(2)}
-              <span className="text-lg font-semibold text-muted">/hr</span>
-            </p>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
-              <Clock className="size-4" /> Minimum {svc.minHours} {svc.minHours === 1 ? "hour" : "hours"}
-            </p>
+        {svc.packages?.length ? (
+          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            {svc.packages.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 rounded-2xl bg-cream-2 px-4 py-3 text-[15px]">
+                <span>{p.label}</span>
+                <span className="font-display text-lg font-extrabold">£{p.price}</span>
+              </div>
+            ))}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <LinkButton href={serviceHref(svc.slug)} variant="outline">
+        ) : null}
+        {svc.priceNote && <p className="mt-4 text-sm text-muted">{svc.priceNote}</p>}
+        {isQuoteOnly(svc) ? (
+          <div className="mt-auto pt-8">
+            <QuoteActions service={svc} />
+            <LinkButton href={serviceHref(svc.slug)} variant="ghost" className="mt-2">
               Learn more
             </LinkButton>
-            <LinkButton href={bookingHref({ service: svc.slug })}>Book now</LinkButton>
           </div>
-        </div>
+        ) : (
+          <div className="mt-auto flex flex-col gap-5 pt-8 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              {svc.packages?.length ? (
+                <>
+                  <p className="text-sm text-muted">Fixed price</p>
+                  <p className="font-display text-4xl font-extrabold">{priceLabel(svc)}</p>
+                </>
+              ) : svc.oneOffRate ? (
+                <>
+                  <p className="text-sm text-muted">Regular · One-off</p>
+                  <p className="font-display text-4xl font-extrabold">
+                    £{svc.hourlyRate}
+                    <span className="text-lg font-semibold text-muted">/hr</span> · £{svc.oneOffRate}
+                    <span className="text-lg font-semibold text-muted">/hr</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted">Hourly rate from</p>
+                  <p className="font-display text-4xl font-extrabold">
+                    £{svc.hourlyRate.toFixed(2)}
+                    <span className="text-lg font-semibold text-muted">/hr</span>
+                  </p>
+                </>
+              )}
+              {!svc.packages?.length && (
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
+                  <Clock className="size-4" /> Minimum {svc.minHours} {svc.minHours === 1 ? "hour" : "hours"}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <LinkButton href={serviceHref(svc.slug)} variant="outline">
+                Learn more
+              </LinkButton>
+              <LinkButton href={bookingHref({ service: svc.slug })}>Book now</LinkButton>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

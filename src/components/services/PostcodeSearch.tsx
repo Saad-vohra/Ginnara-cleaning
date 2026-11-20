@@ -5,7 +5,7 @@ import { ArrowRight, Check, MapPin, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
 import { DEMO_POSTCODES, CITIES } from "@/data/mock-cities";
-import { useActiveServices } from "@/hooks/useStore";
+import { useBookableServices } from "@/hooks/useStore";
 import { bookingHref } from "@/lib/routes";
 import { coveredAreaNames, isCovered, normalisePostcode, UK_POSTCODE } from "@/lib/validation";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ interface Props {
 
 export function PostcodeSearch({ defaultService = "", hideService = false, className, compact, ctaLabel = "See prices" }: Props) {
   const router = useRouter();
-  const services = useActiveServices();
+  const services = useBookableServices();
   const [service, setService] = useState(defaultService);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);

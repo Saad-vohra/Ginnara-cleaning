@@ -18,6 +18,7 @@ import { IMG } from "@/data/images";
 import { logActivity } from "@/lib/admin";
 import { serviceHref } from "@/lib/routes";
 import { insert, patch, removeWhere } from "@/lib/storage";
+import { priceLabel, startingPrice } from "@/lib/services";
 import { cn, gbp2, uid } from "@/lib/utils";
 
 export function Switch({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) {
@@ -114,7 +115,7 @@ function ServicesTable() {
               );
             },
           },
-          { key: "rate", header: "Rate", sortValue: (s) => s.hourlyRate, render: (s) => `${gbp2(s.hourlyRate)}/hr` },
+          { key: "rate", header: "Price", sortValue: (s) => startingPrice(s) ?? 0, render: (s) => (s.oneOffRate ? `${gbp2(s.hourlyRate)}/hr regular · ${gbp2(s.oneOffRate)}/hr one-off` : priceLabel(s)) },
           { key: "min", header: "Min", render: (s) => `${s.minHours}h` },
           { key: "bookings", header: "Bookings", sortValue: (s) => bookings.filter((b) => b.serviceId === s.id).length, render: (s) => bookings.filter((b) => b.serviceId === s.id).length },
           { key: "popular", header: "Popular", render: (s) => (s.popular ? <Badge tone="brand">Popular</Badge> : <span className="text-muted">—</span>) },
@@ -175,7 +176,10 @@ const serviceSchema = z.object({
   tagline: z.string().trim().min(3, "Add a tagline"),
   short: z.string().trim().min(10, "At least 10 characters"),
   description: z.string().trim().min(30, "At least 30 characters"),
-  hourlyRate: z.coerce.number().min(5, "Min £5").max(80, "Max £80"),
+  hourlyRate: z.coerce.number().min(0, "Min £0").max(80, "Max £80"),
+  oneOffRate: z.coerce.number().min(0).max(80, "Max £80"),
+  bookingMode: z.enum(["online", "quote"]),
+  priceNote: z.string().trim().max(200, "Keep it under 200 characters"),
   minHours: z.coerce.number().min(1).max(8),
   image: z.string().min(1),
   includes: z.string().min(3, "Add at least one item"),
@@ -198,15 +202,27 @@ function ServiceModal({ initial, onClose }: { initial?: Service; onClose: () => 
   const { register, handleSubmit, formState, setValue, watch, setError } = useForm<ServiceForm>({
     resolver: zodResolver(serviceSchema),
     defaultValues: initial
-      ? { ...initial, category: initial.category ?? "", includes: initial.includes.join("\n"), features: initial.features.join("\n") }
-      : { name: "", slug: "", category: categories[0]?.id ?? "", tagline: "", short: "", description: "", hourlyRate: 16.5, minHours: 2, image: IMG.livingBright, includes: "", features: "", popular: false, active: true, allowsFrequency: false },
+      ? { ...initial, category: initial.category ?? "", includes: initial.includes.join("\n"), features: initial.features.join("\n"), oneOffRate: initial.oneOffRate ?? 0, bookingMode: initial.bookingMode ?? "online", priceNote: initial.priceNote ?? "" }
+      : { name: "", slug: "", category: categories[0]?.id ?? "", tagline: "", short: "", description: "", hourlyRate: 16.5, oneOffRate: 0, bookingMode: "online", priceNote: "", minHours: 2, image: IMG.livingBright, includes: "", features: "", popular: false, active: true, allowsFrequency: false },
   });
   const image = watch("image");
   const save = handleSubmit((raw) => {
     const v = serviceSchema.parse(raw);
     if (services.some((s) => s.id !== initial?.id && s.slug === v.slug)) return setError("slug", { message: "Slug already used" });
     const lines = (t: string) => t.split("\n").map((x) => x.trim()).filter(Boolean);
-    const data = { ...v, category: v.category || undefined, kind: "cleaning" as const, includes: lines(v.includes), features: lines(v.features), extras, hoursMultiplier: initial?.hoursMultiplier ?? 1.2, accent: initial?.accent ?? "#2e5ea8" };
+    if (v.bookingMode === "online" && v.hourlyRate < 5 && !initial?.packages?.length) return setError("hourlyRate", { message: "Online bookings need a rate of at least £5" });
+    const data = {
+      ...v,
+      category: v.category || undefined,
+      kind: initial?.kind ?? ("cleaning" as const),
+      oneOffRate: v.oneOffRate > 0 ? v.oneOffRate : undefined,
+      priceNote: v.priceNote || undefined,
+      includes: lines(v.includes),
+      features: lines(v.features),
+      extras,
+      hoursMultiplier: initial?.hoursMultiplier ?? 1.2,
+      accent: initial?.accent ?? "#2e5ea8",
+    };
     if (initial) patch("services", (s) => s.id === initial.id, data);
     else insert("services", { ...data, id: uid("svc") }, false);
     logActivity("Services", initial ? "Edited service" : "Added service", v.name);
@@ -228,7 +244,10 @@ function ServiceModal({ initial, onClose }: { initial?: Service; onClose: () => 
         <Input label="URL slug" hint="/cleaning/your-slug" error={formState.errors.slug?.message} {...register("slug")} />
         <Select label="Category" placeholder="Uncategorised" options={categories.map((c) => ({ value: c.id, label: c.name }))} {...register("category")} />
         <Input label="Tagline" error={formState.errors.tagline?.message} {...register("tagline")} />
-        <Input label="Hourly rate (£)" type="number" step="0.1" error={formState.errors.hourlyRate?.message} {...register("hourlyRate")} />
+        <Select label="How customers book" options={[{ value: "online", label: "Online booking" }, { value: "quote", label: "WhatsApp quote only (no online booking)" }]} {...register("bookingMode")} />
+        <Input label="Price note (optional)" hint="Small print shown with the price" error={formState.errors.priceNote?.message} {...register("priceNote")} />
+        <Input label="Hourly rate (£) — regular" type="number" step="0.1" error={formState.errors.hourlyRate?.message} {...register("hourlyRate")} />
+        <Input label="One-off rate (£/h)" hint="0 = same as regular rate" type="number" step="0.1" error={formState.errors.oneOffRate?.message} {...register("oneOffRate")} />
         <Input label="Minimum hours" type="number" step="0.5" error={formState.errors.minHours?.message} {...register("minHours")} />
         <Input label="Short description" wrapClassName="sm:col-span-2" error={formState.errors.short?.message} {...register("short")} />
         <Textarea label="Full description" wrapClassName="sm:col-span-2" error={formState.errors.description?.message} {...register("description")} />

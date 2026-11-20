@@ -39,7 +39,7 @@ export interface Store {
 }
 export type StoreKey = keyof Store;
 
-const PREFIX = "ginnara:v3:";
+const PREFIX = "ginnara:v4:";
 const EVENT = "ginnara-store";
 
 const seeds: { [K in StoreKey]: () => Store[K] } = {
