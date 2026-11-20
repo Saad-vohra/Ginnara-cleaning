@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, CircleHelp, LogOut, Mail, Menu, Phone, Sparkles, User, X } from "lucide-react";
+import { Briefcase, ChevronDown, CircleHelp, LogOut, Mail, Menu, Phone, Sparkles, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -224,6 +224,10 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/become-a-pro" className="hidden flex-col items-center gap-1 px-2 text-[13px] font-medium whitespace-nowrap text-ink hover:text-brand md:flex">
+              <Briefcase className="size-5" />
+              Become a pro
+            </Link>
             <Link href="/help" className="hidden flex-col items-center gap-1 px-2 text-[13px] font-medium whitespace-nowrap text-ink hover:text-brand md:flex">
               <CircleHelp className="size-5" />
               Help
@@ -301,6 +305,7 @@ function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
                 { href: "/how-it-works", label: "How it works" },
                 { href: "/reviews", label: "Reviews" },
                 { href: "/blog", label: "The mag" },
+                { href: "/become-a-pro", label: "Become a pro" },
                 { href: "/help", label: "Help centre" },
                 { href: "/contact", label: "Contact us" },
               ].map((l) => (

@@ -230,6 +230,12 @@ export function ProLoginForm() {
           Sign in
         </Button>
       </form>
+      <p className="mt-6 text-center text-sm text-ink-soft">
+        Not a Ginnara pro yet?{" "}
+        <Link href="/pro/register" className="font-semibold text-brand hover:underline">
+          Apply now
+        </Link>
+      </p>
       <DemoNote className="mt-6">Frontend-only sign-in for demonstration purposes.</DemoNote>
     </AuthLayout>
   );

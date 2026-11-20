@@ -101,6 +101,7 @@ export function Footer() {
                   ["/how-it-works", "How it works"],
                   ["/reviews", "Reviews"],
                   ["/blog", "The mag"],
+                  ["/become-a-pro", "Become a pro"],
                   ["/pro/login", "Pro sign in"],
                   ["/admin", "Admin (demo)"],
                 ].map(([h, l]) => (

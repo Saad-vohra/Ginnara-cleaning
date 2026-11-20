@@ -351,6 +351,13 @@ export function RegisterForm() {
           Log in here
         </Link>
       </p>
+      <div className="my-6 h-px bg-line" />
+      <p className="text-center text-[17px]">
+        At-home professional?{" "}
+        <Link href="/pro/register" className="font-medium underline underline-offset-2 hover:text-brand">
+          Sign up here.
+        </Link>
+      </p>
       <p className="mt-8 text-center text-sm text-muted">
         Questions? Call {settings.supportPhone} or email {settings.supportEmail}
       </p>

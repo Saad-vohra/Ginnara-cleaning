@@ -469,7 +469,7 @@ function ProfileSettings() {
           <Button type="submit" loading={formState.isSubmitting} disabled={!svc.length}>
             Save profile
           </Button>
-          <LinkButton href="/help" variant="ghost">
+          <LinkButton href="/become-a-pro" variant="ghost">
             Pro help
           </LinkButton>
         </div>

@@ -445,7 +445,7 @@ export function HelpPage() {
     { icon: CalendarSearch, t: "Bookings", d: "Book, reschedule, cancel", href: "/faq" },
     { icon: CreditCard, t: "Payments & pricing", d: "Prices, codes, refunds", href: "/faq" },
     { icon: ShieldCheck, t: "Trust & safety", d: "Vetting and insurance", href: "/how-it-works" },
-    { icon: UserCog, t: "Our services", d: "Residential, office, deep & more", href: "/domestic-cleaning" },
+    { icon: UserCog, t: "For pros", d: "Applying, payouts, app", href: "/become-a-pro" },
     { icon: Users, t: "Your account", d: "Login, addresses, settings", href: "/account" },
     { icon: LifeBuoy, t: "Contact support", d: "Talk to a human", href: "/contact" },
   ];
