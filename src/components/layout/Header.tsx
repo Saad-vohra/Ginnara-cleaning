@@ -261,8 +261,8 @@ export function Header() {
               </LinkButton>
             </span>
             <span className="inline-flex sm:hidden">
-              <LinkButton href="/booking" size="sm" className="px-4">
-                Book
+              <LinkButton href="/become-a-pro" size="sm" className="px-4 whitespace-nowrap" icon={<Briefcase className="size-4" />}>
+                Become a pro
               </LinkButton>
             </span>
             <button aria-label="Open menu" onClick={() => setMobileOpen(true)} className="grid size-11 place-items-center rounded-full bg-cream lg:hidden">
