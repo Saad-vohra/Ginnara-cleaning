@@ -144,6 +144,7 @@ export function BookingDetails({ booking, compact }: { booking: Booking; compact
           {booking.rescheduledAt && booking.rescheduledFrom ? ` · Rescheduled ${formatDateTime(booking.rescheduledAt)} (was ${formatDate(booking.rescheduledFrom.date)} at ${booking.rescheduledFrom.time})` : ""}
           {booking.cancelledAt ? ` · Cancelled ${formatDateTime(booking.cancelledAt)}` : ""}
         </p>
+        {booking.equipmentConfirmed && <p className="px-1 text-xs font-semibold text-ink-soft">🧹 Customer provides vacuum cleaner and mop</p>}
         {booking.status === "cancelled" && booking.refundPct !== undefined && (
           <p className="rounded-2xl bg-cream-2 px-4 py-3 text-sm">
             <span className="font-semibold">Cancellation: </span>

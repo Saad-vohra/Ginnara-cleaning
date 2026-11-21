@@ -87,6 +87,7 @@ export function BookingFlow() {
   const [modal, setModal] = useState<"" | "cleaner">("");
 
   const service = services.find((s) => s.slug === draft.serviceSlug);
+  const needsEquipment = service?.kind === "cleaning";
   const update = (patch: Partial<BookingDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const setOptions = (patch: Partial<NonNullable<BookingDraft["options"]>>) => setDraft((d) => (d.options ? { ...d, options: { ...d.options, ...patch } } : d));
 
@@ -146,6 +147,7 @@ export function BookingFlow() {
 
   const book = async () => {
     if (!draft.payment) return setError("Choose a payment method.");
+    if (needsEquipment && !draft.equipmentConfirmed) return setError("Please confirm you'll provide a vacuum cleaner and mop.");
     if (!draft.address.postcode) {
       go("address");
       return setError("Please enter the address for your cleaning.");
@@ -362,6 +364,7 @@ export function BookingFlow() {
             {step === "needs" && service && draft.options && (
               <>
                 <StepTitle>Do you have any other needs?</StepTitle>
+                {service.kind === "cleaning" && <EquipmentNotice className="mb-6" />}
                 <div className="flex flex-col items-start gap-5">
                   {service.extras.includes("ironing") && (
                     <NeedTile icon={<Shirt className="size-7" />} label="Ironing" info="Your pro irons during your session. We recommend adding 30–60 minutes to your booking." selected={draft.options.extras.includes("ironing")} onToggle={() => setOptions({ extras: draft.options!.extras.includes("ironing") ? draft.options!.extras.filter((e) => e !== "ironing") : [...draft.options!.extras, "ironing"] })} />
@@ -576,8 +579,16 @@ export function BookingFlow() {
                     Terms of service
                   </Link>
                 </p>
+                {needsEquipment && (
+                  <label className={cn("mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 text-[16px] leading-snug transition", draft.equipmentConfirmed ? "border-success bg-success/5" : "border-ink")}>
+                    <input type="checkbox" checked={draft.equipmentConfirmed} onChange={(e) => { update({ equipmentConfirmed: e.target.checked }); setError(""); }} className="mt-0.5 size-5 shrink-0 accent-[#f2602b]" />
+                    <span>
+                      <strong>I&apos;ll provide a vacuum cleaner and mop</strong> for my cleaner. I understand Ginnara pros don&apos;t bring cleaning equipment.
+                    </span>
+                  </label>
+                )}
                 {error && <p role="alert" className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{error}</p>}
-                <button type="button" onClick={book} disabled={!draft.payment || submitting} className="mt-6 flex h-16 w-full items-center justify-center gap-3 rounded-full bg-ink text-[20px] font-bold text-white transition hover:bg-black disabled:bg-[#8f8f8f]">
+                <button type="button" onClick={book} disabled={!draft.payment || submitting || (needsEquipment && !draft.equipmentConfirmed)} className="mt-6 flex h-16 w-full items-center justify-center gap-3 rounded-full bg-ink text-[20px] font-bold text-white transition hover:bg-black disabled:bg-[#8f8f8f]">
                   {submitting && <Loader2 className="size-5 animate-spin" />}
                   {submitting ? "Booking…" : `Book my ${service?.kind === "ironing" ? "ironing" : "cleaning"}`}
                 </button>
@@ -724,6 +735,19 @@ function AddressStep({ value, onChange, previous, error, onSubmit, onPickPreviou
         </p>
       </form>
     </>
+  );
+}
+
+/** Customers supply the vacuum and mop — shown on the "other needs" step */
+function EquipmentNotice({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex gap-4 rounded-2xl border-2 border-sun bg-sun/15 p-5", className)}>
+      <span className="text-3xl leading-none" aria-hidden="true">🧹</span>
+      <div className="text-[16px] leading-relaxed">
+        <p className="font-extrabold">Please provide a working vacuum cleaner and mop</p>
+        <p className="mt-1 text-ink-soft">Our pros don&apos;t bring cleaning equipment. If you add &ldquo;Cleaning products&rdquo; below, your pro brings products and cloths — but the vacuum and mop still need to be at the property.</p>
+      </div>
+    </div>
   );
 }
 

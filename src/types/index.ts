@@ -125,6 +125,8 @@ export interface Booking {
   /** Set when the customer moves the booking to a new date/time */
   rescheduledAt?: string;
   rescheduledFrom?: { date: string; time: string };
+  /** Customer confirmed they'll provide a vacuum cleaner and mop */
+  equipmentConfirmed?: boolean;
 }
 
 export interface Customer {

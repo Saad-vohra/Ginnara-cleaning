@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CalendarPlus, CheckCircle2, Copy, Printer, Search } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Copy, Info, Printer, Search } from "lucide-react";
 import { Button, LinkButton } from "@/components/common/Button";
 import { useToast } from "@/components/common/Toast";
 import { EmptyState, Spinner } from "@/components/common/ui";
@@ -58,6 +58,14 @@ export function Confirmation({ bookingRef }: { bookingRef: string }) {
           </button>
         </motion.div>
 
+        {booking.status !== "cancelled" && booking.equipmentConfirmed && (
+          <p className="mb-6 flex items-start gap-3 rounded-3xl border-2 border-sun bg-sun/15 px-5 py-4 text-[15px] leading-relaxed">
+            <Info className="mt-0.5 size-5 shrink-0" />
+            <span>
+              <strong>Reminder:</strong> please have a working <strong>vacuum cleaner and mop</strong> ready for your cleaner on {booking.date.split("-").reverse().join("/")} — our pros don&apos;t bring equipment.
+            </span>
+          </p>
+        )}
         <BookingDetails booking={booking} />
 
         <div className="mt-8 flex flex-wrap gap-3">

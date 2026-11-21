@@ -20,6 +20,8 @@ export interface BookingDraft {
   parking: boolean;
   payment: "" | "card" | "paypal";
   couponCode: string;
+  /** "I'll provide a vacuum cleaner and mop" — required for cleaning bookings */
+  equipmentConfirmed: boolean;
 }
 
 export const emptyDraft = (): BookingDraft => ({
@@ -38,6 +40,7 @@ export const emptyDraft = (): BookingDraft => ({
   parking: false,
   payment: "",
   couponCode: "",
+  equipmentConfirmed: false,
 });
 
 /* ---------- In-progress draft (sessionStorage, survives a sign-in round trip) ---------- */
@@ -98,6 +101,7 @@ export function createBooking(draft: BookingDraft): Booking {
     accessNotes: draft.accessNotes,
     parking: draft.parking,
     paymentMethod: draft.payment || undefined,
+    equipmentConfirmed: draft.equipmentConfirmed || undefined,
     pricing,
     status: "pending",
     customerId: session.customerId,
