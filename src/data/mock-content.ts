@@ -24,7 +24,7 @@ export const FAQS: Faq[] = [
   { category: "Account", q: "How do I see my upcoming bookings?", a: "Log in and open your account dashboard. You'll see upcoming and past bookings, can view details, cancel bookings and manage saved addresses." },
   { category: "Account", q: "I forgot my password", a: "Use the 'Forgot password' link on the login page. In this demo we simulate sending a reset email and let you set a new password straight away." },
   { category: "Becoming a pro", q: "How do I become a Ginnara pro?", a: "Apply online in about five minutes. We'll review your application, arrange a short video interview and run your checks. Approved pros typically start within a week." },
-  { category: "Becoming a pro", q: "How much can I earn?", a: "Pros keep 80% of each booking and typically earn £15–£21 per hour depending on the service, with weekly payouts and no joining fees." },
+  { category: "Becoming a pro", q: "How much can I earn?", a: "Ginnara pros earn £13 per hour on average — about £2,236 a month for 40 hours a week. Payouts are weekly and there are no joining fees." },
 ];
 
 const lorem = {

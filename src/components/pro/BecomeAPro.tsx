@@ -7,38 +7,74 @@ import { Accordion, Photo, Reveal, SectionHeading, Stars } from "@/components/co
 import { IMG, AVATARS } from "@/data/images";
 import { FAQS } from "@/data/mock-content";
 import { useStore } from "@/hooks/useStore";
-import { gbp } from "@/lib/utils";
+
+/** Average hourly earnings shown to prospective pros */
+const AVG_PRO_RATE = 13;
+const WEEKS_PER_MONTH = 4.3;
 
 function EarningsCalculator() {
   const [hours, setHours] = useState(20);
-  const [rate, setRate] = useState(21);
-  const weekly = hours * rate * 0.8;
+  const [help, setHelp] = useState(false);
+  const min = 5;
+  const max = 40;
+  const monthly = Math.round(hours * AVG_PRO_RATE * WEEKS_PER_MONTH);
+  const fill = ((hours - min) / (max - min)) * 100;
   return (
-    <div className="rounded-[32px] bg-white p-6 shadow-lift sm:p-8">
-      <p className="text-sm font-bold tracking-wider text-brand uppercase">Earnings calculator</p>
-      <label className="mt-6 block">
-        <span className="flex justify-between text-sm font-semibold">
-          Hours per week <span className="text-brand">{hours}h</span>
-        </span>
-        <input type="range" min={5} max={45} value={hours} onChange={(e) => setHours(Number(e.target.value))} className="mt-3 w-full accent-[#f2602b]" />
-      </label>
-      <label className="mt-6 block">
-        <span className="flex justify-between text-sm font-semibold">
-          Average customer rate <span className="text-brand">£{rate}/hr</span>
-        </span>
-        <input type="range" min={18} max={26} step={0.5} value={rate} onChange={(e) => setRate(Number(e.target.value))} className="mt-3 w-full accent-[#f2602b]" />
-      </label>
-      <div className="mt-8 grid grid-cols-2 gap-4 rounded-2xl bg-cream p-5">
-        <div>
-          <p className="text-xs text-muted">Per week</p>
-          <p className="font-display text-3xl font-extrabold">{gbp(Math.round(weekly))}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted">Per month</p>
-          <p className="font-display text-3xl font-extrabold">{gbp(Math.round(weekly * 4.33))}</p>
-        </div>
+    <div className="rounded-[32px] bg-[#e5e3fb] p-6 text-ink shadow-lift sm:p-8">
+      <div className="flex items-center justify-between gap-4">
+        <label htmlFor="pro-hours" className="text-[17px] font-bold">
+          Your availability
+        </label>
+        <p className="text-[17px]">
+          <strong>{hours}hr</strong> per week
+        </p>
       </div>
-      <p className="mt-3 text-xs text-muted">Estimate based on keeping 80% of the booking value. Illustrative only.</p>
+      <input
+        id="pro-hours"
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={hours}
+        onChange={(e) => setHours(Number(e.target.value))}
+        aria-valuetext={`${hours} hours per week`}
+        style={{ background: `linear-gradient(to right, #ec6a3f 0%, #ec6a3f ${fill}%, #ffffff ${fill}%, #ffffff 100%)` }}
+        className="mt-4 h-11 w-full cursor-pointer appearance-none rounded-full border border-ink/15 p-1 [&::-moz-range-thumb]:size-9 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-ink/20 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:size-9 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-ink/20 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow"
+      />
+
+      <div className="relative mt-6 rounded-2xl border border-ink/70 p-5 sm:p-6">
+        <button type="button" aria-label="How is this calculated?" aria-expanded={help} onClick={() => setHelp((h) => !h)} className="absolute top-3 right-3 grid size-6 place-items-center rounded-full bg-ink/25 text-xs font-bold text-white hover:bg-ink/40">
+          ?
+        </button>
+        <p className="text-sm font-extrabold tracking-[0.08em] uppercase">Your simulation</p>
+        <div className="mt-4 flex flex-wrap gap-x-10 gap-y-3">
+          <div>
+            <p className="text-[15px]">On average</p>
+            <p className="font-display font-extrabold">
+              <span className="text-xl">£</span>
+              <span className="text-[2.6rem] leading-none">{AVG_PRO_RATE}</span>
+              <span className="text-xl">/hr</span>
+            </p>
+          </div>
+          <div>
+            <p className="text-[15px]">that&apos;s about</p>
+            <p className="font-display font-extrabold">
+              <span className="text-xl">£</span>
+              <span className="text-[2.6rem] leading-none">{monthly.toLocaleString("en-GB")}</span>
+              <span className="text-xl">/month</span>
+            </p>
+          </div>
+        </div>
+        {help && (
+          <p className="mt-4 rounded-xl bg-white/70 p-3 text-xs leading-relaxed text-ink-soft">
+            {hours} hours × £{AVG_PRO_RATE} average per hour × {WEEKS_PER_MONTH} weeks a month. This is an estimate — actual earnings depend on the bookings you accept, your area and the services you offer.
+          </p>
+        )}
+      </div>
+
+      <LinkButton href="/pro/register" variant="dark" className="mt-6 h-14 w-full text-[18px]">
+        Join for free
+      </LinkButton>
     </div>
   );
 }
@@ -49,7 +85,7 @@ export function BecomeAPro() {
   const proFaqs = [...stored.filter((f) => f.category === "Becoming a pro" || f.category === "Cleaners"), ...FAQS.filter((f) => f.category === "Becoming a pro" && !stored.some((s) => s.q === f.q))];
   const perks = [
     { icon: CalendarClock, title: "Choose your hours", text: "Set your availability by the day. Accept the jobs you want, near where you live." },
-    { icon: PiggyBank, title: "Keep 80%, paid weekly", text: "Transparent earnings, no joining fees and payouts every Friday." },
+    { icon: PiggyBank, title: "£13/hr on average, paid weekly", text: "Transparent earnings, no joining fees and payouts every Friday." },
     { icon: ShieldCheck, title: "Insured on every job", text: "Public liability and damage cover included at no cost to you." },
     { icon: Smartphone, title: "Everything in one app", text: "Requests, schedule, directions, messaging and earnings in your pocket." },
   ];
